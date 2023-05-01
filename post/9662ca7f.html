@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang=en>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="本次实验要实现用户级线程之间的切换，使用多线程来加速程序，并实现屏障。 在听课的时候感觉这次实验是要实现内核级线程，让一个进程中的多个线程可以同时运行在多个 CPU 上面，感觉有点害怕。不过看实验说明书的时候才知道是实现的用户级线程，其实应该叫做协程，而且很多代码都已经给出来了，做之前要读一遍 user&#x2F;uthread.c。每个用户线程对应一个内核线程是 Optional chanlle">
+<meta property="og:type" content="article">
+<meta property="og:title" content="MIT 6.s081 Lab7: Multithreading">
+<meta property="og:url" content="https://bigboss2063.github.io/post/9662ca7f.html">
+<meta property="og:site_name" content="bigboss2063&#39;s blog">
+<meta property="og:description" content="本次实验要实现用户级线程之间的切换，使用多线程来加速程序，并实现屏障。 在听课的时候感觉这次实验是要实现内核级线程，让一个进程中的多个线程可以同时运行在多个 CPU 上面，感觉有点害怕。不过看实验说明书的时候才知道是实现的用户级线程，其实应该叫做协程，而且很多代码都已经给出来了，做之前要读一遍 user&#x2F;uthread.c。每个用户线程对应一个内核线程是 Optional chanlle">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2023-04-22T14:05:20.000Z">
+<meta property="article:modified_time" content="2023-05-01T14:08:27.160Z">
+<meta property="article:author" content="bigboss2063">
+<meta property="article:tag" content="操作系统">
+<meta property="article:tag" content="lab 文档">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>MIT 6.s081 Lab7: Multithreading</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="Top" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/categories/">categories</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/bigboss2063">Projects</a></li><!--
+     --><!--
+       --><li><a href="/search/">Search</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="Previous post" href="/post/e613f387.html"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="Next post" href="/post/b1b06482.html"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="Back to top" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="Share post" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">Previous post</span>
+      <span id="i-next" class="info" style="display:none;">Next post</span>
+      <span id="i-top" class="info" style="display:none;">Back to top</span>
+      <span id="i-share" class="info" style="display:none;">Share post</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://bigboss2063.github.io/post/9662ca7f.html"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://bigboss2063.github.io/post/9662ca7f.html&text=MIT 6.s081 Lab7: Multithreading"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://bigboss2063.github.io/post/9662ca7f.html&title=MIT 6.s081 Lab7: Multithreading"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://bigboss2063.github.io/post/9662ca7f.html&is_video=false&description=MIT 6.s081 Lab7: Multithreading"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=MIT 6.s081 Lab7: Multithreading&body=Check out this article: https://bigboss2063.github.io/post/9662ca7f.html"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://bigboss2063.github.io/post/9662ca7f.html&title=MIT 6.s081 Lab7: Multithreading"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://bigboss2063.github.io/post/9662ca7f.html&title=MIT 6.s081 Lab7: Multithreading"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://bigboss2063.github.io/post/9662ca7f.html&title=MIT 6.s081 Lab7: Multithreading"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://bigboss2063.github.io/post/9662ca7f.html&title=MIT 6.s081 Lab7: Multithreading"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://bigboss2063.github.io/post/9662ca7f.html&name=MIT 6.s081 Lab7: Multithreading&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://bigboss2063.github.io/post/9662ca7f.html&t=MIT 6.s081 Lab7: Multithreading"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    <div id="toc">
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#Uthread-switching-between-moderate"><span class="toc-number">1.</span> <span class="toc-text">Uthread: switching between (moderate)</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Using-threads-moderate"><span class="toc-number">2.</span> <span class="toc-text">Using threads (moderate)</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Barrier-moderate"><span class="toc-number">3.</span> <span class="toc-text">Barrier (moderate)</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">4.</span> <span class="toc-text">总结</span></a></li></ol>
+    </div>
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        MIT 6.s081 Lab7: Multithreading
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">bigboss2063</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2023-04-22T14:05:20.000Z" class="dt-published" itemprop="datePublished">2023-04-22</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/MIT-6-s081/">MIT 6.s081</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/lab-%E6%96%87%E6%A1%A3/" rel="tag">lab 文档</a>, <a class="p-category" href="/tags/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/" rel="tag">操作系统</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <p>本次实验要实现用户级线程之间的切换，使用多线程来加速程序，并实现屏障。</p>
+<p>在听课的时候感觉这次实验是要实现内核级线程，让一个进程中的多个线程可以同时运行在多个 CPU 上面，感觉有点害怕。不过看实验说明书的时候才知道是实现的用户级线程，其实应该叫做协程，而且很多代码都已经给出来了，做之前要读一遍 user&#x2F;uthread.c。每个用户线程对应一个内核线程是 Optional chanllenge 部分的任务了，有时间再做吧。这样一来本次的实验还是很简单的。</p>
+<h2 id="Uthread-switching-between-moderate"><a href="#Uthread-switching-between-moderate" class="headerlink" title="Uthread: switching between (moderate)"></a>Uthread: switching between (moderate)</h2><p>这部分是实现用户级线程的切换。在课上教授已经讲过了内核级线程是如何切换的了。大部分内容都可以借鉴。</p>
+<p>在切换线程时，要把当前运行线程的 callee registers 保存下来。</p>
+<p>thread_switch needs to save&#x2F;restore only the callee-save registers.</p>
+<p>我对这里的理解是，用户级线程的切换一定是手动调用 thread_schedule 然后调用 thread_switch 进行切换的。所以对用户级线程来说，恢复现场就是在之前调用 thread_switch 函数后调用 ret 返回到 thread_schedule 函数中，那么由于 C 编译器会在调用函数的时候把 caller registers 保存在线程的栈上，所以我们只需要记下 ra 来定位返回的位置，还有 sp 指出线程栈的位置，并且把所有的 callee register 保存即可（跟内核级线程的切换 Context 是一样的）。</p>
+<p>这部分要做得任务只有两个，在 thread_create 函数中添加代码。要做到线程的切换，我们必须初始化它的 ra 和 sp，这样才可以使得其它线程调用 thread_switch 通过 ret 返回跳到 ra 所在位置执行。在创建的时候设置 ra 和 sp 相当于伪造一个执行现场，返回到那里。</p>
+<p>我选择是直接把寄存器存在 thread 结构体中，这样可以直接把 swtch.S 里的内容复制过来就可以了。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">thread</span> &#123;</span></span><br><span class="line">    uint64     ra;</span><br><span class="line">    uint64     sp;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// callee saved</span></span><br><span class="line">    uint64     s0;</span><br><span class="line">    uint64     s1;</span><br><span class="line">    uint64     s2;</span><br><span class="line">    uint64     s3;</span><br><span class="line">    uint64     s4;</span><br><span class="line">    uint64     s5;</span><br><span class="line">    uint64     s6;</span><br><span class="line">    uint64     s7;</span><br><span class="line">    uint64     s8;</span><br><span class="line">    uint64     s9;</span><br><span class="line">    uint64     s10;</span><br><span class="line">    uint64     s11;</span><br><span class="line"></span><br><span class="line">    <span class="type">char</span>       <span class="built_in">stack</span>[STACK_SIZE]; <span class="comment">/* the thread&#x27;s stack */</span></span><br><span class="line">    <span class="type">int</span>        state;             <span class="comment">/* FREE, RUNNING, RUNNABLE */</span></span><br><span class="line"></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>将线程的 ra 初始化为 func 的起始地址，并且设置线程栈。注意栈是从高地址扩展到低地址的，所以初始化的时候应该将指针指向栈的最高地址。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> </span><br><span class="line"><span class="title function_">thread_create</span><span class="params">(<span class="type">void</span> (*func)())</span></span><br><span class="line">&#123;</span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">thread</span> *<span class="title">t</span>;</span></span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (t = all_thread; t &lt; all_thread + MAX_THREAD; t++) &#123;</span><br><span class="line">    <span class="keyword">if</span> (t-&gt;state == FREE) <span class="keyword">break</span>;</span><br><span class="line">  &#125;</span><br><span class="line">  t-&gt;state = RUNNABLE;</span><br><span class="line">  <span class="comment">// YOUR CODE HERE</span></span><br><span class="line">  t-&gt;ra = (uint64)func;</span><br><span class="line">  t-&gt;sp = (uint64)t-&gt;<span class="built_in">stack</span> + STACK_SIZE - <span class="number">1</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>最后在 thread_schedule 调用 thread_switch 就可以了。注意 t 才是当前线程，而 current 是要被调度的线程。</p>
+<h2 id="Using-threads-moderate"><a href="#Using-threads-moderate" class="headerlink" title="Using threads (moderate)"></a>Using threads (moderate)</h2><p>这部分跟 xv6 无关了，就是用 pthread + lock 来控制并发访问一个 hash table。</p>
+<p>先看一下 hash table 的实现。本质上是一个 entry 类型的数组，里面有 NBUCKET 个链表，key 通过摸 NBUCKET 来决定插入到哪个链表的表头。</p>
+<p>所以回答第一个问题：</p>
+<p>Why are there missing keys with 2 threads, but not with 1 thread? Identify a sequence of events with 2 threads that can lead to a key being missing.</p>
+<p>当两个线程同时调用 insert 函数的时候，两个线程看到的链表头都是同一个，那么在插入的时候，后插入的会把先插入的给覆盖掉。</p>
+<p>然后是实现并发控制，其实就是给每个 bucket 都分配一把锁，这样不同的线程在访问不同的 bucket 的时候就可以并发执行了。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">pthread_mutex_t</span> bucketlocks[NBUCKET]; <span class="comment">// 声明锁</span></span><br></pre></td></tr></table></figure>
+
+<p>在 main 函数中调用 pthread_mutex_init 进行初始化。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">0</span>; i &lt; NBUCKET; i++) &#123;</span><br><span class="line">    pthread_mutex_init(&amp;bucketlocks[i], <span class="literal">NULL</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>在 put 中上锁即可</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> </span><br><span class="line"><span class="type">void</span> <span class="title function_">put</span><span class="params">(<span class="type">int</span> key, <span class="type">int</span> value)</span></span><br><span class="line">&#123;</span><br><span class="line">  <span class="type">int</span> i = key % NBUCKET;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// is the key already present?</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">entry</span> *<span class="title">e</span> =</span> <span class="number">0</span>;</span><br><span class="line">  <span class="keyword">for</span> (e = table[i]; e != <span class="number">0</span>; e = e-&gt;next) &#123;</span><br><span class="line">    <span class="keyword">if</span> (e-&gt;key == key)</span><br><span class="line">      <span class="keyword">break</span>;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">if</span>(e)&#123;</span><br><span class="line">    <span class="comment">// update the existing key.</span></span><br><span class="line">    e-&gt;value = value;</span><br><span class="line">  &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    <span class="comment">// the new is new.</span></span><br><span class="line">    pthread_mutex_lock(&amp;bucketlocks[i]);</span><br><span class="line">    insert(key, value, &amp;table[i], table[i]);</span><br><span class="line">    pthread_mutex_unlock(&amp;bucketlocks[i]);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="Barrier-moderate"><a href="#Barrier-moderate" class="headerlink" title="Barrier (moderate)"></a>Barrier (moderate)</h2><p>这部分要通过 pthread_cond 来实现一个 barrier。关于 barrier 和 waitgroup 的区别：</p>
+<p>屏障是一种同步原语，它会阻止多个线程或 goroutine 的运行，直到它们都到达某个点，在该点它们都被同时释放。 屏障可用于确保仅在所有线程完成其<strong>计算的特定阶段</strong>后才执行某些操作。</p>
+<p>另一方面，WaitGroup 是一种同步原语，用于等待一组 goroutine 完成它们的执行，然后再继续。 WaitGroup 用一个计数初始化，每个 goroutine 在开始工作之前递增计数，并在完成时递减计数。 主线程（或另一个 goroutine）在 WaitGroup 上等待，直到计数达到零，这表明所有 goroutine 都已完成。 这允许主线程与并行任务的完成同步。</p>
+<p>直接实现 barrier 函数即可。需要注意的是 barrier 函数也可能出现竞态。比如说线程 1 进入 barrier，将 bstate.nthread 加 1，然后比较一下还没有达到 nthread，正打算休眠，结果线程 2 进入 barrier，将 bstate.nthread 加 1，比较一下发现已经达到了 nthread，于是执行了一次唤醒操作，接着线程 1 又休眠了，那么线程 1 无法被唤醒，下一轮也就永远无法到达 nthread 了。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">void</span> </span><br><span class="line"><span class="title function_">barrier</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">  <span class="comment">// YOUR CODE HERE</span></span><br><span class="line">  <span class="comment">//</span></span><br><span class="line">  <span class="comment">// Block until all threads have called barrier() and</span></span><br><span class="line">  <span class="comment">// then increment bstate.round.</span></span><br><span class="line">  <span class="comment">//</span></span><br><span class="line">  pthread_mutex_lock(&amp;bstate.barrier_mutex);</span><br><span class="line">  bstate.nthread++;</span><br><span class="line">  <span class="keyword">if</span> (bstate.nthread &lt; nthread) &#123;</span><br><span class="line">    pthread_cond_wait(&amp;bstate.barrier_cond, &amp;bstate.barrier_mutex);</span><br><span class="line">  &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    bstate.nthread = <span class="number">0</span>;</span><br><span class="line">    bstate.round++;</span><br><span class="line">    pthread_cond_broadcast(&amp;bstate.barrier_cond);</span><br><span class="line">  &#125;</span><br><span class="line">  pthread_mutex_unlock(&amp;bstate.barrier_mutex);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>所以通过上锁将增加 bstate.nthread++、比较、休眠或唤醒合成一个原子操作。</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>这次 lab 由于跟 xv6 相关的部分只有一个，并且跟教授上课讲得内核级线程的切换几乎一样，只是省去了先切换到调度线程这一步，所以实现起来很简单。后续有时间可以回来实现一下内核级线程。</p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">Home</a></li>
+        
+          <li><a href="/categories/">categories</a></li>
+        
+          <li><a href="/about/">About</a></li>
+        
+          <li><a href="/archives/">Writing</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/bigboss2063">Projects</a></li>
+        
+          <li><a href="/search/">Search</a></li>
+        
+      </ul>
+    </div>
+
+    <div id="toc-footer" style="display: none">
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#Uthread-switching-between-moderate"><span class="toc-number">1.</span> <span class="toc-text">Uthread: switching between (moderate)</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Using-threads-moderate"><span class="toc-number">2.</span> <span class="toc-text">Using threads (moderate)</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Barrier-moderate"><span class="toc-number">3.</span> <span class="toc-text">Barrier (moderate)</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">4.</span> <span class="toc-text">总结</span></a></li></ol>
+    </div>
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://bigboss2063.github.io/post/9662ca7f.html"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://bigboss2063.github.io/post/9662ca7f.html&text=MIT 6.s081 Lab7: Multithreading"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://bigboss2063.github.io/post/9662ca7f.html&title=MIT 6.s081 Lab7: Multithreading"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://bigboss2063.github.io/post/9662ca7f.html&is_video=false&description=MIT 6.s081 Lab7: Multithreading"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=MIT 6.s081 Lab7: Multithreading&body=Check out this article: https://bigboss2063.github.io/post/9662ca7f.html"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://bigboss2063.github.io/post/9662ca7f.html&title=MIT 6.s081 Lab7: Multithreading"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://bigboss2063.github.io/post/9662ca7f.html&title=MIT 6.s081 Lab7: Multithreading"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://bigboss2063.github.io/post/9662ca7f.html&title=MIT 6.s081 Lab7: Multithreading"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://bigboss2063.github.io/post/9662ca7f.html&title=MIT 6.s081 Lab7: Multithreading"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://bigboss2063.github.io/post/9662ca7f.html&name=MIT 6.s081 Lab7: Multithreading&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://bigboss2063.github.io/post/9662ca7f.html&t=MIT 6.s081 Lab7: Multithreading"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> Menu</a>
+        <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> TOC</a>
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> Share</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> Top</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2023
+    bigboss2063
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/categories/">categories</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/bigboss2063">Projects</a></li><!--
+     --><!--
+       --><li><a href="/search/">Search</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"Copy to clipboard!\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "Copied!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>

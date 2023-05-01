@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang=en>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="This lab explores how system calls are implemented using traps. You will first do a warm-up exercises with stacks and then you will implement an example of user-level trap handling.  lab4 相对 lab3 要简单">
+<meta property="og:type" content="article">
+<meta property="og:title" content="MIT 6.s081 Lab4: Traps">
+<meta property="og:url" content="https://bigboss2063.github.io/post/282c8539.html">
+<meta property="og:site_name" content="bigboss2063&#39;s blog">
+<meta property="og:description" content="This lab explores how system calls are implemented using traps. You will first do a warm-up exercises with stacks and then you will implement an example of user-level trap handling.  lab4 相对 lab3 要简单">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/a608d22b3c5e44a19680ade600fcf85d~tplv-k3u1fbpfcp-zoom-1.image">
+<meta property="article:published_time" content="2023-04-13T11:53:28.000Z">
+<meta property="article:modified_time" content="2023-05-01T11:55:53.440Z">
+<meta property="article:author" content="bigboss2063">
+<meta property="article:tag" content="操作系统">
+<meta property="article:tag" content="lab 文档">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/a608d22b3c5e44a19680ade600fcf85d~tplv-k3u1fbpfcp-zoom-1.image">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>MIT 6.s081 Lab4: Traps</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="Top" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/categories/">categories</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/bigboss2063">Projects</a></li><!--
+     --><!--
+       --><li><a href="/search/">Search</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="Previous post" href="/post/32a9d8d3.html"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="Next post" href="/post/b51235b3.html"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="Back to top" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="Share post" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">Previous post</span>
+      <span id="i-next" class="info" style="display:none;">Next post</span>
+      <span id="i-top" class="info" style="display:none;">Back to top</span>
+      <span id="i-share" class="info" style="display:none;">Share post</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://bigboss2063.github.io/post/282c8539.html"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://bigboss2063.github.io/post/282c8539.html&text=MIT 6.s081 Lab4: Traps"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://bigboss2063.github.io/post/282c8539.html&title=MIT 6.s081 Lab4: Traps"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://bigboss2063.github.io/post/282c8539.html&is_video=false&description=MIT 6.s081 Lab4: Traps"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=MIT 6.s081 Lab4: Traps&body=Check out this article: https://bigboss2063.github.io/post/282c8539.html"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://bigboss2063.github.io/post/282c8539.html&title=MIT 6.s081 Lab4: Traps"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://bigboss2063.github.io/post/282c8539.html&title=MIT 6.s081 Lab4: Traps"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://bigboss2063.github.io/post/282c8539.html&title=MIT 6.s081 Lab4: Traps"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://bigboss2063.github.io/post/282c8539.html&title=MIT 6.s081 Lab4: Traps"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://bigboss2063.github.io/post/282c8539.html&name=MIT 6.s081 Lab4: Traps&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://bigboss2063.github.io/post/282c8539.html&t=MIT 6.s081 Lab4: Traps"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    <div id="toc">
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#RISC-V-assembly-easy"><span class="toc-number">1.</span> <span class="toc-text">RISC-V assembly (easy)</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Backtrace-moderate"><span class="toc-number">2.</span> <span class="toc-text">Backtrace (moderate)</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Alarm-hard"><span class="toc-number">3.</span> <span class="toc-text">Alarm (hard)</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">4.</span> <span class="toc-text">总结</span></a></li></ol>
+    </div>
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        MIT 6.s081 Lab4: Traps
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">bigboss2063</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2023-04-13T11:53:28.000Z" class="dt-published" itemprop="datePublished">2023-04-13</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/MIT-6-s081/">MIT 6.s081</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/lab-%E6%96%87%E6%A1%A3/" rel="tag">lab 文档</a>, <a class="p-category" href="/tags/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/" rel="tag">操作系统</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <blockquote>
+<p>This lab explores how system calls are implemented using traps. You will first do a warm-up exercises with stacks and then you will implement an example of user-level trap handling.</p>
+</blockquote>
+<p>lab4 相对 lab3 要简单很多，需要写的代码行数不多，并且给的 hints 也很直接。只要听了 lecture 5 和 lecture 6 都能够明白其中的原理。这两次课分别讲了 xv6 的栈结构跟 trap 的一些细节。</p>
+<h2 id="RISC-V-assembly-easy"><a href="#RISC-V-assembly-easy" class="headerlink" title="RISC-V assembly (easy)"></a>RISC-V assembly (easy)</h2><p>就是去看 user&#x2F;call.c 和 user&#x2F;call.asm 中的函数 g, f, main，然后回答一些问题。我没有看 RISC-V 的手册，太长了有点不好搜索。有不懂的指令去 Google 一下反而还方便一点。这边就直接贴出答案了，第三题的答案可能会不一样。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">Q: Which registers contain arguments to functions? For example, which register holds 13  in main&#x27;s call to printf?</span><br><span class="line">A: a0-a7. a2.</span><br><span class="line"></span><br><span class="line">Q: Where is the call to function f in the assembly code for main? Where is the call to g? (Hint: the compiler may inline functions.)</span><br><span class="line">A: Function f and g are inlined by the compiler.</span><br><span class="line"></span><br><span class="line">Q: At what address is the function printf located?</span><br><span class="line">A: 0x630.</span><br><span class="line"></span><br><span class="line">Q: What value is in the register ra just after the jalr to printf in main?</span><br><span class="line">A: 0x38.</span><br><span class="line"></span><br><span class="line">Q: ...</span><br><span class="line">A: Set i to 0x726c6400. Do not need to modify 57616, because it&#x27;s decimal value is just  110. Little- or big-endian is no matter with values.</span><br><span class="line"></span><br><span class="line">Q: ...</span><br><span class="line">A: It will read the value set in register a2 by the previous function.</span><br></pre></td></tr></table></figure>
+
+<h2 id="Backtrace-moderate"><a href="#Backtrace-moderate" class="headerlink" title="Backtrace (moderate)"></a>Backtrace (moderate)</h2><p>这部分是实现一个类似于 gdb 的 backtrace，打印函数调用栈帧中的返回地址。在 kernel&#x2F;printf.c 中添加一个 backtrace() 函数，然后在 sys_sleep 中调用 进行测试。</p>
+<p>要实现 backtrace 首先要理解 xv6 的函数栈帧结构，根据老师上课的 ppt：</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/a608d22b3c5e44a19680ade600fcf85d~tplv-k3u1fbpfcp-zoom-1.image"></p>
+<p>可以看到，函数栈帧之间其实就像一个链表，被 fp 指针给连接到一起，所以我们只需要拿到当前函数的 fp，就可以一直遍历整个函数调用链。当前的 fp 被存放在 s0 寄存器中。在 kernel&#x2F;risv.h 中添加以下函数来取出 s0 中的值：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="keyword">inline</span> uint64</span><br><span class="line"><span class="title function_">r_fp</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">  uint64 x;</span><br><span class="line">  <span class="keyword">asm</span> <span class="title function_">volatile</span><span class="params">(<span class="string">&quot;mv %0, s0&quot;</span> : <span class="string">&quot;=r&quot;</span> (x) )</span>;</span><br><span class="line">  <span class="keyword">return</span> x;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>在栈中，函数的返回地址固定在 fp - 8 的位置，调用该函数的函数的 fp 在 fp - 16 的位置。我们一直遍历到这一页结束就可以了。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span></span><br><span class="line"><span class="title function_">backtrace</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">  uint64 fp, ra, last;</span><br><span class="line">  fp = r_fp();</span><br><span class="line">  last = PGROUNDUP(fp);</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">&quot;backtrace:\n&quot;</span>);</span><br><span class="line">  <span class="keyword">for</span> (;;) &#123;</span><br><span class="line">    ra = fp<span class="number">-8</span>;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;%p\n&quot;</span>, *((uint64 *)(ra)));</span><br><span class="line">    fp = *((uint64 *)(fp<span class="number">-16</span>));</span><br><span class="line">    <span class="keyword">if</span> (fp == last) &#123;</span><br><span class="line">      <span class="keyword">break</span>;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="Alarm-hard"><a href="#Alarm-hard" class="headerlink" title="Alarm (hard)"></a>Alarm (hard)</h2><p>这部分就是有难度的地方了。要实现一个用户级的中断，用户程序通过调用 sigalarm(interval, handler) 系统调用来设置一个计时器，每隔 interval 个 tick，就调用 handler 函数进行处理。并且在 handler 函数返回之后，会调用 sigreturn() 函数，被中断的用户程序要正常恢复执行，也就是说对于被中断的用户程序来说 alarm handler是透明的。</p>
+<p>每次在收到 timer 硬件发出的中断时，就是一个 tick，它不是一个确定的时间单位。而 timer interrupt 会触发 trap，所以可以知道 alarm handler 是要在 trap 中触发的，类似于在 trap 中又套了一层 trap。</p>
+<p>我们需要在 struct proc 结构体中添加一些新的属性来保存触发 handler 的间隔，handler 函数指针，距离上次调用 handler 过去了几个 tick，当前是否有 handler 在执行，以及一个 struct trapframe 用来保存被打断的程序的寄存器值：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// ... struct proc</span></span><br><span class="line"><span class="type">int</span> ticks;                   <span class="comment">// Alarm ticks</span></span><br><span class="line"><span class="type">void</span> (*handler)();           <span class="comment">// Alarm handler</span></span><br><span class="line"><span class="type">int</span> passedticks;             <span class="comment">// Record how many ticks passed</span></span><br><span class="line"><span class="type">int</span> isrunninghandler;        <span class="comment">// Avoid re-entrant calls to a handler</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">trapframe</span> *<span class="title">savedtf</span>;</span>   <span class="comment">// Save trapframe when call handler</span></span><br></pre></td></tr></table></figure>
+
+<p>ticks、handler、passedticks 在 sigalarm 系统调用中设置：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">uint64</span><br><span class="line"><span class="title function_">sys_sigalarm</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">proc</span> *<span class="title">p</span> =</span> myproc();</span><br><span class="line">  <span class="type">int</span> ticks;</span><br><span class="line">  uint64 handler;</span><br><span class="line">  <span class="keyword">if</span> (argint(<span class="number">0</span>, &amp;ticks) &lt; <span class="number">0</span>)</span><br><span class="line">    <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">  <span class="keyword">if</span> (argaddr(<span class="number">1</span>, &amp;handler) &lt; <span class="number">0</span>)</span><br><span class="line">    <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">  p-&gt;ticks = ticks;</span><br><span class="line">  p-&gt;handler = (<span class="type">void</span> (*)()) handler;</span><br><span class="line">  p-&gt;passedticks = <span class="number">0</span>;</span><br><span class="line">  <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>接着在 kernel&#x2F;trap.c#usertrap 中处理 timer interrupt。当 which_dev &#x3D; 2 的时候，表明是 timer interrupt。</p>
+<p>由于执行完 handler 之后，需要回到被中断的程序继续执行，所以在这里要将这个程序的状态保存下来，在 sigreturn 系统调用中恢复。我这里图方便就直接将所有的寄存器和状态都保存下来了。保存完状态后，<strong>将 p-&gt;trapframe-&gt;epc 的值设置为 handler 的地址</strong>。usertrap 会调用 usertrapret，usertrapret 会将 p-&gt;trapframe-&gt;epc 设置到 spec 寄存器中，userret 在返回时调用 sret 指令会将 sepc 寄存器中的值设置到 pc 中，所以用户程序就会跳到 handler 中去执行了。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">// ok</span><br><span class="line">if (which_dev == 2 &amp;&amp; p-&gt;ticks != 0) &#123;</span><br><span class="line">  p-&gt;passedticks++;</span><br><span class="line">  // if there is no handler running and it&#x27;s time to call handler</span><br><span class="line">  if (p-&gt;passedticks == p-&gt;ticks &amp;&amp; p-&gt;isrunninghandler == 0) &#123;</span><br><span class="line">    p-&gt;isrunninghandler = 1;</span><br><span class="line">    // save trapframe</span><br><span class="line">    memmove(p-&gt;savedtf, p-&gt;trapframe, sizeof(struct trapframe));</span><br><span class="line">    p-&gt;trapframe-&gt;epc = (uint64) p-&gt;handler;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>在 handler 程序执行完后，在测试中就是 periodic 函数，其中会调用 sigreturn，在这里面回复原来的函数的执行。</p>
+<p>首先将 passedticks 重置，以便下一轮触发，然后将 isrunninghandler 置 0，表示没有在执行的 handler，然后将保存在 savedfp 中的寄存器值都重新写入 trapframe 中，接着调用 usertrapret 将寄存器的值都恢复，就像从 trap 中恢复出来一样。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">uint64</span><br><span class="line"><span class="title function_">sys_sigreturn</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">proc</span> *<span class="title">p</span> =</span> myproc();</span><br><span class="line">  p-&gt;passedticks = <span class="number">0</span>;</span><br><span class="line">  p-&gt;isrunninghandler = <span class="number">0</span>;</span><br><span class="line">  <span class="comment">// Restore trapframe</span></span><br><span class="line">  memmove(p-&gt;trapframe, p-&gt;savedtf, <span class="keyword">sizeof</span>(<span class="keyword">struct</span> trapframe));</span><br><span class="line">  <span class="comment">// Restore registers when usertrapret calls userret, and userret calls sret to back to the interrupted code.</span></span><br><span class="line">  usertrapret();</span><br><span class="line">  <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>这次的 lab 其实就像老师喂饼一样，看过 lecture5&#x2F;6 之后，再把 xv6 book Chapter4 看完，其中的原理肯定会明白，然后就是一些小细节可能会为难一点（C 语言不太好的甚至会被语法为难😭），其它难点不多，但是确实对 trap 有深入的理解。Robert 我的神！</p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">Home</a></li>
+        
+          <li><a href="/categories/">categories</a></li>
+        
+          <li><a href="/about/">About</a></li>
+        
+          <li><a href="/archives/">Writing</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/bigboss2063">Projects</a></li>
+        
+          <li><a href="/search/">Search</a></li>
+        
+      </ul>
+    </div>
+
+    <div id="toc-footer" style="display: none">
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#RISC-V-assembly-easy"><span class="toc-number">1.</span> <span class="toc-text">RISC-V assembly (easy)</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Backtrace-moderate"><span class="toc-number">2.</span> <span class="toc-text">Backtrace (moderate)</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Alarm-hard"><span class="toc-number">3.</span> <span class="toc-text">Alarm (hard)</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">4.</span> <span class="toc-text">总结</span></a></li></ol>
+    </div>
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://bigboss2063.github.io/post/282c8539.html"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://bigboss2063.github.io/post/282c8539.html&text=MIT 6.s081 Lab4: Traps"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://bigboss2063.github.io/post/282c8539.html&title=MIT 6.s081 Lab4: Traps"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://bigboss2063.github.io/post/282c8539.html&is_video=false&description=MIT 6.s081 Lab4: Traps"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=MIT 6.s081 Lab4: Traps&body=Check out this article: https://bigboss2063.github.io/post/282c8539.html"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://bigboss2063.github.io/post/282c8539.html&title=MIT 6.s081 Lab4: Traps"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://bigboss2063.github.io/post/282c8539.html&title=MIT 6.s081 Lab4: Traps"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://bigboss2063.github.io/post/282c8539.html&title=MIT 6.s081 Lab4: Traps"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://bigboss2063.github.io/post/282c8539.html&title=MIT 6.s081 Lab4: Traps"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://bigboss2063.github.io/post/282c8539.html&name=MIT 6.s081 Lab4: Traps&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://bigboss2063.github.io/post/282c8539.html&t=MIT 6.s081 Lab4: Traps"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> Menu</a>
+        <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> TOC</a>
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> Share</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> Top</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2023
+    bigboss2063
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/categories/">categories</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/bigboss2063">Projects</a></li><!--
+     --><!--
+       --><li><a href="/search/">Search</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"Copy to clipboard!\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "Copied!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>

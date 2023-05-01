@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang=en>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="xv6 中 sbrk 的实现默认是 eager allocation，也就是一旦用户进程申请了内存，那么内核马上就会分配。但实际上，用户进程难以估量自己需要多少内存，所以往往会额外申请，导致内存消耗增加，并且有部分内存永远不会被用到。 所以可以用 lazy page allocation 来解决这个问题，sbrk 只用来记住分配了哪些用户地址（即更新 sz），而不先分配内存，直到产生了 page">
+<meta property="og:type" content="article">
+<meta property="og:title" content="MIT 6.s081 Lab5: xv6 lazy page allocation">
+<meta property="og:url" content="https://bigboss2063.github.io/post/32a9d8d3.html">
+<meta property="og:site_name" content="bigboss2063&#39;s blog">
+<meta property="og:description" content="xv6 中 sbrk 的实现默认是 eager allocation，也就是一旦用户进程申请了内存，那么内核马上就会分配。但实际上，用户进程难以估量自己需要多少内存，所以往往会额外申请，导致内存消耗增加，并且有部分内存永远不会被用到。 所以可以用 lazy page allocation 来解决这个问题，sbrk 只用来记住分配了哪些用户地址（即更新 sz），而不先分配内存，直到产生了 page">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2023-04-19T14:03:19.000Z">
+<meta property="article:modified_time" content="2023-05-01T14:08:27.158Z">
+<meta property="article:author" content="bigboss2063">
+<meta property="article:tag" content="操作系统">
+<meta property="article:tag" content="lab 文档">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>MIT 6.s081 Lab5: xv6 lazy page allocation</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="Top" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/categories/">categories</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/bigboss2063">Projects</a></li><!--
+     --><!--
+       --><li><a href="/search/">Search</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="Previous post" href="/post/b1b06482.html"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="Next post" href="/post/282c8539.html"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="Back to top" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="Share post" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">Previous post</span>
+      <span id="i-next" class="info" style="display:none;">Next post</span>
+      <span id="i-top" class="info" style="display:none;">Back to top</span>
+      <span id="i-share" class="info" style="display:none;">Share post</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://bigboss2063.github.io/post/32a9d8d3.html"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://bigboss2063.github.io/post/32a9d8d3.html&text=MIT 6.s081 Lab5: xv6 lazy page allocation"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://bigboss2063.github.io/post/32a9d8d3.html&title=MIT 6.s081 Lab5: xv6 lazy page allocation"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://bigboss2063.github.io/post/32a9d8d3.html&is_video=false&description=MIT 6.s081 Lab5: xv6 lazy page allocation"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=MIT 6.s081 Lab5: xv6 lazy page allocation&body=Check out this article: https://bigboss2063.github.io/post/32a9d8d3.html"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://bigboss2063.github.io/post/32a9d8d3.html&title=MIT 6.s081 Lab5: xv6 lazy page allocation"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://bigboss2063.github.io/post/32a9d8d3.html&title=MIT 6.s081 Lab5: xv6 lazy page allocation"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://bigboss2063.github.io/post/32a9d8d3.html&title=MIT 6.s081 Lab5: xv6 lazy page allocation"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://bigboss2063.github.io/post/32a9d8d3.html&title=MIT 6.s081 Lab5: xv6 lazy page allocation"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://bigboss2063.github.io/post/32a9d8d3.html&name=MIT 6.s081 Lab5: xv6 lazy page allocation&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://bigboss2063.github.io/post/32a9d8d3.html&t=MIT 6.s081 Lab5: xv6 lazy page allocation"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    <div id="toc">
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#Lazytests-and-Usertests"><span class="toc-number">1.</span> <span class="toc-text">Lazytests and Usertests</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">2.</span> <span class="toc-text">总结</span></a></li></ol>
+    </div>
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        MIT 6.s081 Lab5: xv6 lazy page allocation
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">bigboss2063</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2023-04-19T14:03:19.000Z" class="dt-published" itemprop="datePublished">2023-04-19</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/MIT-6-s081/">MIT 6.s081</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/lab-%E6%96%87%E6%A1%A3/" rel="tag">lab 文档</a>, <a class="p-category" href="/tags/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/" rel="tag">操作系统</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <p>xv6 中 sbrk 的实现默认是 eager allocation，也就是一旦用户进程申请了内存，那么内核马上就会分配。但实际上，用户进程难以估量自己需要多少内存，所以往往会额外申请，导致内存消耗增加，并且有部分内存永远不会被用到。</p>
+<p>所以可以用 lazy page allocation 来解决这个问题，sbrk 只用来记住分配了哪些用户地址（即更新 sz），而不先分配内存，直到产生了 page fault 再分配内存。</p>
+<h2 id="Lazytests-and-Usertests"><a href="#Lazytests-and-Usertests" class="headerlink" title="Lazytests and Usertests"></a>Lazytests and Usertests</h2><p>partⅠ和 partⅡ 的话，Frans 教授在课上讲过了，这里就不重复了。partⅢ 就是实现 Frans 教授说的要对 xv6 做进一步的修改，这些修改都已经写在 Hints 中了：</p>
+<ol>
+<li>处理 sbrk 的参数为负数的情况；</li>
+<li>如果发生 page fault 的地址比 sbrk 分配的地址还大的时候，杀死进程；</li>
+<li>处理用户进程通过系统调用传递了一个正确的地址，但是这个地址还没有被分配内存的情况（即修改copyin 和 copyout 等函数）。</li>
+<li>如果发生 page fault 后没有可用内存了，杀死进程；</li>
+<li>如果发生 page fault 的地址访问到了 guard page，杀死进程。</li>
+</ol>
+<p>第一个要修改的地方在 kernel&#x2F;sysproc.c#sys_sbrk 中：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">uint64</span><br><span class="line"><span class="title function_">sys_sbrk</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">  <span class="type">int</span> addr;</span><br><span class="line">  <span class="type">int</span> n;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span>(argint(<span class="number">0</span>, &amp;n) &lt; <span class="number">0</span>)</span><br><span class="line">    <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">  addr = myproc()-&gt;sz;</span><br><span class="line">  <span class="keyword">if</span> (n &gt; <span class="number">0</span>)</span><br><span class="line">    myproc()-&gt;sz = myproc()-&gt;sz + n; <span class="comment">// just add sz, but not allocate memory.</span></span><br><span class="line">  <span class="keyword">else</span> &#123;</span><br><span class="line">    myproc()-&gt;sz = uvmdealloc(myproc()-&gt;pagetable, myproc()-&gt;sz, myproc()-&gt;sz + n);</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> addr;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>在前两个部分中，我们在 kernel&#x2F;trap.c#usertrap 中添加了代码，那么对它进行进一步的修改，添加了一个 pgfhandler 函数，用来处理指定虚拟地址发生的 page fault：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// ...</span></span><br><span class="line">&#125; <span class="keyword">else</span> <span class="keyword">if</span>((which_dev = devintr()) != <span class="number">0</span>)&#123;</span><br><span class="line">  <span class="comment">// ok</span></span><br><span class="line">&#125; <span class="keyword">else</span> <span class="keyword">if</span>(r_scause() == <span class="number">15</span> || r_scause() == <span class="number">13</span>) &#123;</span><br><span class="line">  <span class="comment">// load page fault or store page fault</span></span><br><span class="line">  uint64 va = r_stval(); <span class="comment">// va is the address that cause the page fault</span></span><br><span class="line">  <span class="keyword">if</span> (pgfhandler(va) == <span class="number">-1</span>) &#123; <span class="comment">// if can&#x27;t handle the page fault, kill the process</span></span><br><span class="line">    p-&gt;killed = <span class="number">1</span>;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">else</span> &#123;</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">&quot;usertrap(): unexpected scause %p pid=%d\n&quot;</span>, r_scause(), p-&gt;pid);</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">&quot;            sepc=%p stval=%p\n&quot;</span>, r_sepc(), r_stval());</span><br><span class="line">  p-&gt;killed = <span class="number">1</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>在这个函数中，我们判断是否能够进行 page fault handle，如果不行就杀死这个进程。做了以下判断：</p>
+<ol>
+<li>该虚拟地址是否在堆中；</li>
+<li>该虚拟地址是否访问到了 guard page；</li>
+<li>是否还有物理内存可以分配；</li>
+<li>新分配的页是否已经映射了，防止报 remap。</li>
+</ol>
+<p>如果可以处理，那么就进行处理，否则返回 0，在 usertrap 中将 p-&gt;killed 标识为 1（如果在这里面标识为 1 的话会杀死初始进程）。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span></span><br><span class="line"><span class="title function_">pgfhandler</span><span class="params">(uint64 va)</span> &#123;</span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">proc</span> *<span class="title">p</span> =</span> myproc();</span><br><span class="line">  <span class="keyword">if</span> (va &gt;= p-&gt;sz || PGROUNDUP(va) == p-&gt;kstack) &#123;</span><br><span class="line">    <span class="comment">// if va is a invalid address, kill the process.</span></span><br><span class="line">    <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">  &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    uint64 ka = (uint64) kalloc();</span><br><span class="line">    <span class="keyword">if</span> (ka == <span class="number">0</span>) &#123;</span><br><span class="line">      <span class="comment">// if there is no memory can use, kill the process.</span></span><br><span class="line">      <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">      <span class="built_in">memset</span>((<span class="type">void</span> *) ka, <span class="number">0</span>, PGSIZE);</span><br><span class="line">      va = PGROUNDDOWN(va);</span><br><span class="line">      <span class="type">pte_t</span> * pte;</span><br><span class="line">      <span class="comment">// avoid remap panic.</span></span><br><span class="line">      <span class="keyword">if</span> ((pte = walk(p-&gt;pagetable, va, <span class="number">0</span>)) != <span class="number">0</span> &amp;&amp; (*pte &amp; PTE_V) != <span class="number">0</span>) &#123;</span><br><span class="line">        kfree((<span class="type">void</span> *) ka);</span><br><span class="line">        <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="comment">// map new page above.</span></span><br><span class="line">      <span class="keyword">if</span>(mappages(p-&gt;pagetable, va, PGSIZE, ka, PTE_W|PTE_U|PTE_R) != <span class="number">0</span>) &#123;</span><br><span class="line">        kfree((<span class="type">void</span> *) ka);</span><br><span class="line">        <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>注意要把 kernel&#x2F;vm.c#uvmunmap 和 kernel&#x2F;vm.c&#x2F;uvmcopy 函数中的 panic 去掉，直接 continue 即可，因为使用了 lazy allocation 之后，在 unmap 的时候会出现 walk 不出来或者本来就没有 map 的情况，不能 panic，在 uvmcopy 的时候也会出现 walk 不出来，或者复制到了一个无效的 pte。代码就不贴出来了。</p>
+<p>最后一步，修改 kernel&#x2F;vm.c#copyin, kernel&#x2F;vm.c#copyinstr, kernel&#x2F;vm.c#copyout，将需要访问的用户空间地址做一个预处理，也就是调用 pgfhandler 先进行一波缺页处理，否则这些函数可能访问到没有分配的内存。</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>本次 lab 相对简单，尤其是 Frans 教授上课已经把前两部分讲了，也很详细的讲了 page fault 是如何处理的。就是有一些细节要注意，我最开始就没想到要处理 copyin 和 copyout。</p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">Home</a></li>
+        
+          <li><a href="/categories/">categories</a></li>
+        
+          <li><a href="/about/">About</a></li>
+        
+          <li><a href="/archives/">Writing</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/bigboss2063">Projects</a></li>
+        
+          <li><a href="/search/">Search</a></li>
+        
+      </ul>
+    </div>
+
+    <div id="toc-footer" style="display: none">
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#Lazytests-and-Usertests"><span class="toc-number">1.</span> <span class="toc-text">Lazytests and Usertests</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">2.</span> <span class="toc-text">总结</span></a></li></ol>
+    </div>
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://bigboss2063.github.io/post/32a9d8d3.html"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://bigboss2063.github.io/post/32a9d8d3.html&text=MIT 6.s081 Lab5: xv6 lazy page allocation"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://bigboss2063.github.io/post/32a9d8d3.html&title=MIT 6.s081 Lab5: xv6 lazy page allocation"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://bigboss2063.github.io/post/32a9d8d3.html&is_video=false&description=MIT 6.s081 Lab5: xv6 lazy page allocation"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=MIT 6.s081 Lab5: xv6 lazy page allocation&body=Check out this article: https://bigboss2063.github.io/post/32a9d8d3.html"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://bigboss2063.github.io/post/32a9d8d3.html&title=MIT 6.s081 Lab5: xv6 lazy page allocation"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://bigboss2063.github.io/post/32a9d8d3.html&title=MIT 6.s081 Lab5: xv6 lazy page allocation"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://bigboss2063.github.io/post/32a9d8d3.html&title=MIT 6.s081 Lab5: xv6 lazy page allocation"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://bigboss2063.github.io/post/32a9d8d3.html&title=MIT 6.s081 Lab5: xv6 lazy page allocation"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://bigboss2063.github.io/post/32a9d8d3.html&name=MIT 6.s081 Lab5: xv6 lazy page allocation&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://bigboss2063.github.io/post/32a9d8d3.html&t=MIT 6.s081 Lab5: xv6 lazy page allocation"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> Menu</a>
+        <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> TOC</a>
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> Share</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> Top</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2023
+    bigboss2063
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/categories/">categories</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/bigboss2063">Projects</a></li><!--
+     --><!--
+       --><li><a href="/search/">Search</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"Copy to clipboard!\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "Copied!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>

@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang=en>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="本次 lab 是要重新设计 xv6 的内存分配器和块缓存来获取更高的并行性。要增加并行性通常要设计到更改数据结构和上锁策略来减少竞态。 Memory allocator (moderate)原本的 allocator 中只有一个单独的 freelist，也就是说 page 的分配和释放都会频繁的产生竞争。所以给每个 CPU 设置一个单独的 freelist 和一个单独的锁。所以进程在不同的 CPU">
+<meta property="og:type" content="article">
+<meta property="og:title" content="MIT 6.s081 Lab8: locks">
+<meta property="og:url" content="https://bigboss2063.github.io/post/e613f387.html">
+<meta property="og:site_name" content="bigboss2063&#39;s blog">
+<meta property="og:description" content="本次 lab 是要重新设计 xv6 的内存分配器和块缓存来获取更高的并行性。要增加并行性通常要设计到更改数据结构和上锁策略来减少竞态。 Memory allocator (moderate)原本的 allocator 中只有一个单独的 freelist，也就是说 page 的分配和释放都会频繁的产生竞争。所以给每个 CPU 设置一个单独的 freelist 和一个单独的锁。所以进程在不同的 CPU">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/e3a5f446f27d4dd1ac4690c109f64f29~tplv-k3u1fbpfcp-zoom-1.image">
+<meta property="article:published_time" content="2023-04-25T14:06:08.000Z">
+<meta property="article:modified_time" content="2023-05-01T14:08:27.167Z">
+<meta property="article:author" content="bigboss2063">
+<meta property="article:tag" content="操作系统">
+<meta property="article:tag" content="lab 文档">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/e3a5f446f27d4dd1ac4690c109f64f29~tplv-k3u1fbpfcp-zoom-1.image">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>MIT 6.s081 Lab8: locks</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="Top" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/categories/">categories</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/bigboss2063">Projects</a></li><!--
+     --><!--
+       --><li><a href="/search/">Search</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="Previous post" href="/post/801fac79.html"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="Next post" href="/post/9662ca7f.html"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="Back to top" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="Share post" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">Previous post</span>
+      <span id="i-next" class="info" style="display:none;">Next post</span>
+      <span id="i-top" class="info" style="display:none;">Back to top</span>
+      <span id="i-share" class="info" style="display:none;">Share post</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://bigboss2063.github.io/post/e613f387.html"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://bigboss2063.github.io/post/e613f387.html&text=MIT 6.s081 Lab8: locks"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://bigboss2063.github.io/post/e613f387.html&title=MIT 6.s081 Lab8: locks"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://bigboss2063.github.io/post/e613f387.html&is_video=false&description=MIT 6.s081 Lab8: locks"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=MIT 6.s081 Lab8: locks&body=Check out this article: https://bigboss2063.github.io/post/e613f387.html"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://bigboss2063.github.io/post/e613f387.html&title=MIT 6.s081 Lab8: locks"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://bigboss2063.github.io/post/e613f387.html&title=MIT 6.s081 Lab8: locks"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://bigboss2063.github.io/post/e613f387.html&title=MIT 6.s081 Lab8: locks"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://bigboss2063.github.io/post/e613f387.html&title=MIT 6.s081 Lab8: locks"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://bigboss2063.github.io/post/e613f387.html&name=MIT 6.s081 Lab8: locks&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://bigboss2063.github.io/post/e613f387.html&t=MIT 6.s081 Lab8: locks"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    <div id="toc">
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#Memory-allocator-moderate"><span class="toc-number">1.</span> <span class="toc-text">Memory allocator (moderate)</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.1.</span> <span class="toc-text">代码实现</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Buffer-cache-hard"><span class="toc-number">2.</span> <span class="toc-text">Buffer cache (hard)</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B0-1"><span class="toc-number">2.1.</span> <span class="toc-text">代码实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#bget"><span class="toc-number">2.2.</span> <span class="toc-text">bget</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%B5%8B%E8%AF%95%E7%BB%93%E6%9E%9C"><span class="toc-number">3.</span> <span class="toc-text">测试结果</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">4.</span> <span class="toc-text">总结</span></a></li></ol>
+    </div>
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        MIT 6.s081 Lab8: locks
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">bigboss2063</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2023-04-25T14:06:08.000Z" class="dt-published" itemprop="datePublished">2023-04-25</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/MIT-6-s081/">MIT 6.s081</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/lab-%E6%96%87%E6%A1%A3/" rel="tag">lab 文档</a>, <a class="p-category" href="/tags/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/" rel="tag">操作系统</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <p>本次 lab 是要重新设计 xv6 的内存分配器和块缓存来获取更高的并行性。要增加并行性通常要设计到更改数据结构和上锁策略来减少竞态。</p>
+<h2 id="Memory-allocator-moderate"><a href="#Memory-allocator-moderate" class="headerlink" title="Memory allocator (moderate)"></a>Memory allocator (moderate)</h2><p>原本的 allocator 中只有一个单独的 freelist，也就是说 page 的分配和释放都会频繁的产生竞争。所以给每个 CPU 设置一个单独的 freelist 和一个单独的锁。所以进程在不同的 CPU 上申请和分配 page 就可以并行运行了。如果当前 CPU 上 freelist 的为空的时候，就要去别的 CPU 那里偷取 page，这个时候依旧会产生竞争。</p>
+<h3 id="代码实现"><a href="#代码实现" class="headerlink" title="代码实现"></a>代码实现</h3><p>首先修改 CPU 结构体，在每个 CPU 中加入一个之前的 kmem，让每个 CPU 可以单独的分配内存。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">run</span> &#123;</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">run</span> *<span class="title">next</span>;</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">kmem</span> &#123;</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">spinlock</span> <span class="title">lock</span>;</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">run</span> *<span class="title">freelist</span>;</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Per-CPU state.</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">cpu</span> &#123;</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">proc</span> *<span class="title">proc</span>;</span>          <span class="comment">// The process running on this cpu, or null.</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">context</span> <span class="title">context</span>;</span>     <span class="comment">// swtch() here to enter scheduler().</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">kmem</span> <span class="title">kmem</span>;</span></span><br><span class="line">  <span class="type">int</span> noff;                   <span class="comment">// Depth of push_off() nesting.</span></span><br><span class="line">  <span class="type">int</span> intena;                 <span class="comment">// Were interrupts enabled before push_off()?</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>通过 NCPU 参数可以知道，有 8 个 CPU，所以在初始化 alloctor 的时候将 freepage 分成 8 份，分别放入 8 个 CPU 的 kmem 中。其实也可以初始化的时候都放到一个 CPU 里，然后其它 CPU 去偷。但是我感觉这样会有一个冷启动的过程，不如在初始化的时候直接先分配了。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span></span><br><span class="line"><span class="title function_">kinit</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">  uint64 offset = (PHYSTOP - (uint64)end)/<span class="number">8</span>;</span><br><span class="line">  uint64 left, right;</span><br><span class="line">  left = (uint64) end;</span><br><span class="line">  right = left + offset;</span><br><span class="line">  <span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">0</span>; i &lt; NCPU; i++) &#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">cpu</span> *<span class="title">c</span> =</span> &amp;cpus[i];</span><br><span class="line">    initlock(&amp;c-&gt;kmem.lock, <span class="string">&quot;kmem&quot;</span>);</span><br><span class="line">    <span class="type">char</span> *p;</span><br><span class="line">    p = (<span class="type">char</span>*)PGROUNDUP(left);</span><br><span class="line">    <span class="keyword">for</span>(; p + PGSIZE &lt;= (<span class="type">char</span>*)right; p += PGSIZE) &#123;</span><br><span class="line">      <span class="class"><span class="keyword">struct</span> <span class="title">run</span> *<span class="title">r</span>;</span></span><br><span class="line"></span><br><span class="line">      <span class="keyword">if</span>(((uint64)p % PGSIZE) != <span class="number">0</span> || (<span class="type">char</span>*)p &lt; end || (uint64)p &gt;= PHYSTOP)</span><br><span class="line">        panic(<span class="string">&quot;kfree&quot;</span>);</span><br><span class="line"></span><br><span class="line">      <span class="comment">// Fill with junk to catch dangling refs.</span></span><br><span class="line">      <span class="built_in">memset</span>(p, <span class="number">1</span>, PGSIZE);</span><br><span class="line">      r = (<span class="keyword">struct</span> run*)p;</span><br><span class="line">      r-&gt;next = c-&gt;kmem.freelist;</span><br><span class="line">      c-&gt;kmem.freelist = r;</span><br><span class="line">    &#125;</span><br><span class="line">    left = right;</span><br><span class="line">    right = right + offset;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>然后修改 kfree，在释放的时候申请当前 CPU 的 kmem 锁，将 page 释放到当前 CPU 的 freelist 中即可，注意开关中断。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span></span><br><span class="line"><span class="title function_">kfree</span><span class="params">(<span class="type">void</span> *pa)</span></span><br><span class="line">&#123;</span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">run</span> *<span class="title">r</span>;</span></span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span>(((uint64)pa % PGSIZE) != <span class="number">0</span> || (<span class="type">char</span>*)pa &lt; end || (uint64)pa &gt;= PHYSTOP)</span><br><span class="line">    panic(<span class="string">&quot;kfree&quot;</span>);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Fill with junk to catch dangling refs.</span></span><br><span class="line">  <span class="built_in">memset</span>(pa, <span class="number">1</span>, PGSIZE);</span><br><span class="line"></span><br><span class="line">  r = (<span class="keyword">struct</span> run*)pa;</span><br><span class="line"></span><br><span class="line">  push_off();</span><br><span class="line"></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">cpu</span> *<span class="title">c</span> =</span> mycpu();</span><br><span class="line"></span><br><span class="line">  acquire(&amp;c-&gt;kmem.lock);</span><br><span class="line">  r-&gt;next = c-&gt;kmem.freelist;</span><br><span class="line">  c-&gt;kmem.freelist = r;</span><br><span class="line">  release(&amp;c-&gt;kmem.lock);</span><br><span class="line"></span><br><span class="line">  pop_off();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>最后是 kalloc，在分配的时候由于当前 CPU 的 freelist 可能已经为空了，那么就需要去其它 CPU 那里偷。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> *</span><br><span class="line"><span class="title function_">kalloc</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">  push_off();</span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">run</span> *<span class="title">r</span>;</span></span><br><span class="line">  <span class="type">int</span> cid = cpuid();</span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">cpu</span> *<span class="title">c</span> =</span> &amp;cpus[cid];</span><br><span class="line"></span><br><span class="line">  acquire(&amp;c-&gt;kmem.lock);</span><br><span class="line">  r = c-&gt;kmem.freelist;</span><br><span class="line">  <span class="keyword">if</span>(r) &#123;</span><br><span class="line">    c-&gt;kmem.freelist = r-&gt;next;</span><br><span class="line">    release(&amp;c-&gt;kmem.lock);</span><br><span class="line">  &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    release(&amp;c-&gt;kmem.lock);</span><br><span class="line">    <span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">0</span>; i &lt; NCPU; i++) &#123;</span><br><span class="line">      <span class="keyword">if</span> (i == cid) <span class="keyword">continue</span>;</span><br><span class="line">      <span class="class"><span class="keyword">struct</span> <span class="title">cpu</span> *<span class="title">nc</span> =</span> &amp;cpus[i];</span><br><span class="line">      acquire(&amp;nc-&gt;kmem.lock);</span><br><span class="line">      r = nc-&gt;kmem.freelist;</span><br><span class="line">      <span class="keyword">if</span> (r) &#123;</span><br><span class="line">        acquire(&amp;c-&gt;kmem.lock);</span><br><span class="line">        nc-&gt;kmem.freelist = r-&gt;next;</span><br><span class="line">        release(&amp;c-&gt;kmem.lock);</span><br><span class="line">        release(&amp;nc-&gt;kmem.lock);</span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line">      &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        release(&amp;nc-&gt;kmem.lock);</span><br><span class="line">        <span class="keyword">continue</span>;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span>(r)</span><br><span class="line">    <span class="built_in">memset</span>((<span class="type">char</span>*)r, <span class="number">5</span>, PGSIZE); <span class="comment">// fill with junk</span></span><br><span class="line">  pop_off();</span><br><span class="line">  <span class="keyword">return</span> (<span class="type">void</span>*)r;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>去其它 CPU 那里偷的时候，由于要获取其它 CPU 的锁，所以会产生竞争。还有一种情况就是当前进程持有当前 CPU 的锁去偷其它 CPU 的时候，那个被偷的 CPU 可能也正在尝试偷当前 CPU，这样就会产生死锁。</p>
+<p>可以选择在去别的 CPU 那里偷之前把当前 CPU 的锁释放掉，这样就不会产生死锁，破坏了死锁的必要条件。我在大佬的博客上看到说如果这个时候释放了锁，就会导致重复偷取 page。我想了一下，如果说在释放当前 CPU 的 kmem 锁之后，该进程被调度走了，另外一个进程又过来执行 kalloc，也发现当前 CPU 的 freelist 是空的，也会进行偷取。但是我感觉当前已经是关中断了，那么时钟中断也会被屏蔽，当前进程就不会被调度了，所以应该不会产生这种情况吧。这一块没有太懂，不过能通过测试，暂时先这样。</p>
+<h2 id="Buffer-cache-hard"><a href="#Buffer-cache-hard" class="headerlink" title="Buffer cache (hard)"></a>Buffer cache (hard)</h2><p>这部分要做的事情跟第一部分的目的是一样的，修改 bcache 结构体，并降低锁的粒度。将原本的用一个大锁锁住整个双向链表的设计，拆分成一个 Hash Table，每个 bucket 一个锁，那么就可以使得访问不同 bucket 的进程并行访问 buffer cache。</p>
+<h3 id="代码实现-1"><a href="#代码实现-1" class="headerlink" title="代码实现"></a>代码实现</h3><p>根据 hints，最基本的思路是很容易想到的。将 buffer 以哈希表的形式组织，bucket 的数量为 13 个，每个 bucket 需要一把锁。并且把原本的双向链表设计去掉，原本的双向链表是为了实现 LRU，但现在我们通过给每个 buffer 记录时间戳来实现 LRU，时间戳就为 kernel&#x2F;trap.c 中的 ticks。</p>
+<p>所以 bcache 结构改为以下形式：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">spinlock</span> <span class="title">lock</span>;</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">buf</span> <span class="title">buf</span>[<span class="title">NBUF</span>];</span></span><br><span class="line"></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">buf</span> <span class="title">buckets</span>[<span class="title">NBUCKET</span>];</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">spinlock</span> <span class="title">bucketlocks</span>[<span class="title">NBUCKET</span>];</span></span><br><span class="line">&#125; bcache;</span><br></pre></td></tr></table></figure>
+
+<p>在 buf 结构体中去掉 prev 指针，并加入 timestamp 字段，用于实现 LRU：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">buf</span> &#123;</span></span><br><span class="line">  <span class="type">int</span> valid;   <span class="comment">// has data been read from disk?</span></span><br><span class="line">  <span class="type">int</span> disk;    <span class="comment">// does disk &quot;own&quot; buf?</span></span><br><span class="line">  uint dev;</span><br><span class="line">  uint blockno;</span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">sleeplock</span> <span class="title">lock</span>;</span></span><br><span class="line">  uint refcnt;</span><br><span class="line">  uint timestamp;</span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">buf</span> *<span class="title">prev</span>;</span> <span class="comment">// LRU cache list</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">buf</span> *<span class="title">next</span>;</span></span><br><span class="line">  uchar data[BSIZE];</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>这样一来就不需要维护双向链表了，binit 的实现也很简单，只需要初始化锁并且将 bcache.buf 中的所有 buffer 都放进 bcache.buckets[0]，并初始化每个 buf 的 sleeplock 即可。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span></span><br><span class="line"><span class="title function_">binit</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">buf</span> *<span class="title">b</span>;</span></span><br><span class="line"></span><br><span class="line">  initlock(&amp;bcache.lock, <span class="string">&quot;bcache&quot;</span>);</span><br><span class="line"></span><br><span class="line">  <span class="type">int</span> i;</span><br><span class="line">  <span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; NBUCKET; i++) &#123;</span><br><span class="line">    initlock(&amp;bcache.bucketlocks[i], <span class="string">&quot;bcache&quot;</span>);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (b = bcache.buf; b &lt; bcache.buf+NBUF; b++) &#123;</span><br><span class="line">    initsleeplock(&amp;b-&gt;lock, <span class="string">&quot;buffer&quot;</span>);</span><br><span class="line">    b-&gt;next = bcache.buckets[<span class="number">0</span>].next;</span><br><span class="line">    bcache.buckets[<span class="number">0</span>].next = b;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>在我最开始的实现中，bcache.lock 是用不上的（所以也没跑出正确答案）。但是根据 Hints：</p>
+<p>Your solution might need to hold two locks in some cases; for example, during eviction you may need to hold the bcache lock and a lock per bucket. Make sure you avoid deadlock.</p>
+<p>是需要上两把锁的，具体使用场景到后面再看。</p>
+<p>由于我们现在不需要维护双向链表，在 brelse 的时候直接释放 buf 的 sleep 的 lock，然后再获取对应的 bucket 的 lock，将 refcnt– 即可，如果 refcnt &#x3D;&#x3D; 0，则将当前的 ticks 设置为 buf 的 timestamp。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span></span><br><span class="line"><span class="title function_">brelse</span><span class="params">(<span class="keyword">struct</span> buf *b)</span></span><br><span class="line">&#123;</span><br><span class="line">  <span class="keyword">if</span>(!holdingsleep(&amp;b-&gt;lock))</span><br><span class="line">    panic(<span class="string">&quot;brelse&quot;</span>);</span><br><span class="line"></span><br><span class="line">  releasesleep(&amp;b-&gt;lock);</span><br><span class="line"></span><br><span class="line">  <span class="type">int</span> key = HASH_DEV_BLOCKNO(b-&gt;dev, b-&gt;blockno);</span><br><span class="line">  acquire(&amp;bcache.bucketlocks[key]);</span><br><span class="line">  b-&gt;refcnt--;</span><br><span class="line">  <span class="keyword">if</span> (b-&gt;refcnt == <span class="number">0</span>) &#123;</span><br><span class="line">    b-&gt;timestamp = ticks;</span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  release(&amp;bcache.bucketlocks[key]);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>同样的修改 bpin 和 bunpin，这里就不贴出来了。</p>
+<h3 id="bget"><a href="#bget" class="headerlink" title="bget"></a>bget</h3><p>整个 bget 是最折磨的地方，多线程场景下的问题还是太难发现了。</p>
+<p>最开始我没有意识到问题的严重性，按照最初的思路，写了第一版代码，逻辑如下：</p>
+<ol>
+<li>获取 dev 和 blockno 对应的 bucket 的锁；</li>
+<li>如果已经有缓存了就直接返回 buf，否则执行 3；</li>
+<li>在所有的 bucket 中找出一个 refcnt 为 0，并且最近最久未使用的 buf。在这个过程中需要对 bucket 上锁，遍历完一个 bucket 之后，释放它的锁；</li>
+<li>如果找到了这样的 buf，就申请它所在的 bucket 锁并进行 eviction，将它从原本的 bucket 中移除，否则直接 panic；</li>
+<li>将找到的 buf 插入 dev 和 blockno 对应的 bucket 中，并设置 buf 的值；</li>
+<li>释放 dev 和 blockno 对应的 bucket 的锁；</li>
+<li>获取找到的 buf 的 sleeplock；</li>
+<li>返回 buf；</li>
+</ol>
+<p>这样乍一看是没什么问题，但是事实并非如此。</p>
+<p>首先一个容易注意到的点就是，会产生死锁。由于我们在发现没有缓存的时候，并没有释放刚刚获取的 bucket 的锁，然后就开始在所有 bucket 中找一个可以被 evict 的 buf，这时候要获取其它 bucket 的锁。那么如果一个进程 A 持有 bucket1 的锁，又去获取 bucket 2 的锁，但是进程 B 又持有 bucket2 的锁去获取 bucket1 的锁时，就产生了死锁。</p>
+<p>所以在发现我们要找的 buf 并没有在缓存中时，要先释放当前持有的 bucket 的锁，再去进行 eviction。</p>
+<p>第二个问题就是，当我们找到了那个可以被 evict 的 buf 时，将锁释放掉了，正式进行 evict 时，又去申请锁，但是在释放锁到重新申请锁的这个间隙，可能有其它进程又引用了刚刚找出来的那个 buf，使得它的 refcnt 不为 1，这个时候将其 evict 掉就会发生错误。</p>
+<p>解决方案就是，在找出可以 evict 的 buf 后，不释放对应 bucket 的锁，而是直到 evict 之后再释放。那么其它进程在刚开始获取缓存的时候就会阻塞，因为它获取不到这个 bucket 的锁，待到 ecivt 结束后，它才能去查看 bucket，这时候它就看不到那个被 evict 的 buf 了。</p>
+<p>完成以上两个修改之后，bcachetest 已经能够通过了。但是如果执行 usertests，第一个 manywrites 就无法通过，报的错误是 panic: freeing free block，即释放了一个原本已经释放的 block cache。而这种重复释放的原因，肯定就是同一个 block 被缓存了多次。</p>
+<p>下面的思路来自于<a target="_blank" rel="noopener" href="https://github.com/Miigon">Miigon</a>。</p>
+<p>假设当前有两个进程同时访问同样缓存块，在第一个进程获取到对应的 bucket 锁后，发现不存在缓存，就释放了锁，进入寻找可 evict 的 buf 阶段。这时，第二个进程同样能够获取对应 bucket 的锁，并同样发现缓存不存在，也进入寻找可 evict 的 buf 阶段。</p>
+<p>这个时候完全有可能发生的是，它们找到了两个不同的 buf，并且将它们 evict 掉之后都插入了它们要找的 block 对应的 bucket 中。这时就出现了同一块 block 有多个 cache 的情况。最后也就会触发 freeing free block。</p>
+<p>这时候前文提到的那个 hint 就要回收了，再看一遍：</p>
+<p>Your solution might need to hold two locks in some cases; for example, during eviction you may need to hold the bcache lock and a lock per bucket. Make sure you avoid deadlock.</p>
+<p>再结合前一条：</p>
+<p>It is OK to serialize eviction in bget (i.e., the part of bget that selects a buffer to re-use when a lookup misses in the cache).</p>
+<p>现在想想其实就是暗示我们在寻找并 evict 可用 buf 的时候将整个流程串行化，保留最开始查看是否有缓存的并行。并且缓存丢失的概率一般来说都是非常低的，所以后面的串行化造成的性能损失其实是可以接受的。</p>
+<p>所以现在利用上 bcache.lock，在发现缓存不存在释放掉对应 bucket 的锁之后，立刻获取 bcache.lock 这把大锁。由于在释放对应 bucket 锁到获取 bcache.lock 期间，可能有别的进程已经完成了对我们要找的 block 设置 cache，所以在获取完 bcache.lock 后，再进行一次查找缓存，如果发现已经存在了，就直接返回对应的 buf。</p>
+<p>这样一来，就算有多个进程同时进入 bget，也只有第一个进程可以获取到 bcache.lock，并完成缓存的设置，后面的进程都会被获取完锁后的第二轮查找缓存给拦住。这样就避免了一个 block 被缓存多次。</p>
+<p>下面是完整的代码：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="keyword">struct</span> buf*</span><br><span class="line"><span class="title function_">bget</span><span class="params">(uint dev, uint blockno)</span></span><br><span class="line">&#123;</span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">buf</span> *<span class="title">b</span>;</span></span><br><span class="line"></span><br><span class="line">  <span class="type">int</span> key = HASH_DEV_BLOCKNO(dev, blockno);</span><br><span class="line"></span><br><span class="line">  acquire(&amp;bcache.bucketlocks[key]);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Is the block already cached?</span></span><br><span class="line">  <span class="keyword">for</span> (b = bcache.buckets[key].next; b; b = b-&gt;next) &#123;</span><br><span class="line">    <span class="keyword">if</span> (b-&gt;dev == dev &amp;&amp; b-&gt;blockno == blockno) &#123;</span><br><span class="line">      b-&gt;refcnt++;</span><br><span class="line">      release(&amp;bcache.bucketlocks[key]);</span><br><span class="line">      acquiresleep(&amp;b-&gt;lock);</span><br><span class="line">      <span class="keyword">return</span> b;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  release(&amp;bcache.bucketlocks[key]);</span><br><span class="line">  <span class="comment">// 一定要先释放再去获取 bcache.lock</span></span><br><span class="line">  <span class="comment">// 否则如果另一个进程持有 bcache.lock，再在下面获取 bucketlocks[key] 就会死锁  </span></span><br><span class="line">  acquire(&amp;bcache.lock);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (b = bcache.buckets[key].next; b; b = b-&gt;next) &#123;</span><br><span class="line">    <span class="keyword">if</span> (b-&gt;dev == dev &amp;&amp; b-&gt;blockno == blockno) &#123;</span><br><span class="line">      acquire(&amp;bcache.bucketlocks[key]);</span><br><span class="line">      b-&gt;refcnt++;</span><br><span class="line">      release(&amp;bcache.bucketlocks[key]);</span><br><span class="line">      release(&amp;bcache.lock);</span><br><span class="line">      acquiresleep(&amp;b-&gt;lock);</span><br><span class="line">      <span class="keyword">return</span> b;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Not cached.</span></span><br><span class="line">  <span class="type">int</span> i, bidx = <span class="number">-1</span>, flag = <span class="number">0</span>;</span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">buf</span> *<span class="title">tmp</span> =</span> <span class="number">0</span>;</span><br><span class="line">  <span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; NBUCKET; i++) &#123;</span><br><span class="line">    acquire(&amp;bcache.bucketlocks[i]);</span><br><span class="line">    <span class="keyword">for</span> (b = &amp;bcache.buckets[i]; b-&gt;next; b = b-&gt;next) &#123;</span><br><span class="line">      <span class="keyword">if</span> (b-&gt;next-&gt;refcnt == <span class="number">0</span> &amp;&amp; (!tmp || b-&gt;next-&gt;timestamp &gt; tmp-&gt;next-&gt;timestamp)) &#123;</span><br><span class="line">          tmp = b;</span><br><span class="line">          flag = <span class="number">1</span>;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (!flag) &#123;</span><br><span class="line">      release(&amp;bcache.bucketlocks[i]); <span class="comment">// 如果没有找到 buf 就释放锁</span></span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">      <span class="comment">// 如果找到了新 buf，那就释放之前找到的 buf 的 bucket 锁，并保留当前 bucket 的锁</span></span><br><span class="line">      flag = <span class="number">0</span>;</span><br><span class="line">      <span class="keyword">if</span> (bidx != <span class="number">-1</span>) release(&amp;bcache.bucketlocks[bidx]);</span><br><span class="line">      bidx = i;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (!tmp) &#123;</span><br><span class="line">    panic(<span class="string">&quot;bget: no buffers&quot;</span>);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  b = tmp-&gt;next;</span><br><span class="line">  tmp-&gt;next = b-&gt;next;</span><br><span class="line">  release(&amp;bcache.bucketlocks[bidx]); <span class="comment">// 进行 evict 后再释放锁</span></span><br><span class="line">  </span><br><span class="line">  acquire(&amp;bcache.bucketlocks[key]);</span><br><span class="line">  b-&gt;next = bcache.buckets[key].next;</span><br><span class="line">  bcache.buckets[key].next = b;</span><br><span class="line">  b-&gt;dev = dev;</span><br><span class="line">  b-&gt;blockno = blockno;</span><br><span class="line">  b-&gt;valid = <span class="number">0</span>;</span><br><span class="line">  b-&gt;refcnt = <span class="number">1</span>;</span><br><span class="line">  release(&amp;bcache.bucketlocks[key]);</span><br><span class="line">  release(&amp;bcache.lock);</span><br><span class="line">  acquiresleep(&amp;b-&gt;lock);</span><br><span class="line">  <span class="keyword">return</span> b;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="测试结果"><a href="#测试结果" class="headerlink" title="测试结果"></a>测试结果</h2><p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/e3a5f446f27d4dd1ac4690c109f64f29~tplv-k3u1fbpfcp-zoom-1.image"></p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>多线程场景下的问题真的很难搞，感觉在业务场景下，用一些常见的模式还没有那么难。到系统编程的场景下，这些问题都要自己考虑，解决一个问题之后可能又产生另一个问题，我自己对于这方面的能力还是太弱了。</p>
+<p>引用一下<a target="_blank" rel="noopener" href="https://github.com/Miigon">Miigon</a>大佬的总结：</p>
+<blockquote>
+<p>锁竞争优化一般有几个思路：</p>
+<ul>
+<li>只在必须共享的时候共享（对应为将资源从 CPU 共享拆分为每个 CPU 独立）</li>
+<li>必须共享时，尽量减少在关键区中停留的时间（对应“大锁化小锁”，降低锁的粒度）</li>
+</ul>
+</blockquote>
+<p>第一种思路就是本次 lab 的第一部分，只有当前 CPU 的 freelist 已经为空时，才去和其它的 CPU 共享 freelist，其它情况下都是并行执行的。</p>
+<p>第二种思路就是本次 lab 的第二部分，bcache 是没有办法单独划分给每个 CPU 的，属于必须共享，所以只能通过缩小临界区，缩小锁的粒度来实现。</p>
+<p>后续这方面还是得多多加强。</p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">Home</a></li>
+        
+          <li><a href="/categories/">categories</a></li>
+        
+          <li><a href="/about/">About</a></li>
+        
+          <li><a href="/archives/">Writing</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/bigboss2063">Projects</a></li>
+        
+          <li><a href="/search/">Search</a></li>
+        
+      </ul>
+    </div>
+
+    <div id="toc-footer" style="display: none">
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#Memory-allocator-moderate"><span class="toc-number">1.</span> <span class="toc-text">Memory allocator (moderate)</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.1.</span> <span class="toc-text">代码实现</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Buffer-cache-hard"><span class="toc-number">2.</span> <span class="toc-text">Buffer cache (hard)</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B0-1"><span class="toc-number">2.1.</span> <span class="toc-text">代码实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#bget"><span class="toc-number">2.2.</span> <span class="toc-text">bget</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%B5%8B%E8%AF%95%E7%BB%93%E6%9E%9C"><span class="toc-number">3.</span> <span class="toc-text">测试结果</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">4.</span> <span class="toc-text">总结</span></a></li></ol>
+    </div>
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://bigboss2063.github.io/post/e613f387.html"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://bigboss2063.github.io/post/e613f387.html&text=MIT 6.s081 Lab8: locks"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://bigboss2063.github.io/post/e613f387.html&title=MIT 6.s081 Lab8: locks"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://bigboss2063.github.io/post/e613f387.html&is_video=false&description=MIT 6.s081 Lab8: locks"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=MIT 6.s081 Lab8: locks&body=Check out this article: https://bigboss2063.github.io/post/e613f387.html"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://bigboss2063.github.io/post/e613f387.html&title=MIT 6.s081 Lab8: locks"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://bigboss2063.github.io/post/e613f387.html&title=MIT 6.s081 Lab8: locks"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://bigboss2063.github.io/post/e613f387.html&title=MIT 6.s081 Lab8: locks"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://bigboss2063.github.io/post/e613f387.html&title=MIT 6.s081 Lab8: locks"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://bigboss2063.github.io/post/e613f387.html&name=MIT 6.s081 Lab8: locks&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://bigboss2063.github.io/post/e613f387.html&t=MIT 6.s081 Lab8: locks"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> Menu</a>
+        <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> TOC</a>
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> Share</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> Top</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2023
+    bigboss2063
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/categories/">categories</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/bigboss2063">Projects</a></li><!--
+     --><!--
+       --><li><a href="/search/">Search</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"Copy to clipboard!\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "Copied!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>
