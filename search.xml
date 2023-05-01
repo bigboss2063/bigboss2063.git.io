@@ -5,8 +5,8 @@
     
     <entry>
       <title>DDIA：可靠性、可伸缩性和可维护性</title>
-      <link href="/project/post/a781fd30.html"/>
-      <url>/project/post/a781fd30.html</url>
+      <link href="/post/a781fd30.html"/>
+      <url>/post/a781fd30.html</url>
       
         <content type="html"><![CDATA[<blockquote><p>现今很多应用程序都是 <strong>数据密集型（data-intensive）</strong> 的，而非 <strong>计算密集型（compute-intensive）</strong> 的。因此 CPU 很少成为这类应用的瓶颈，更大的问题通常来自数据量、数据复杂性、以及数据的变更速度。</p></blockquote><h2 id="关于数据系统的思考"><a href="#关于数据系统的思考" class="headerlink" title="关于数据系统的思考"></a>关于数据系统的思考</h2><p>数据系统是<strong>数据库、消息队列、缓存</strong>等工具的总称。随着数据规模和复杂性的扩大，需要更加强大的和可靠的数据系统来满足需求，而单个工具已经无法满足所有数据处理和存储需求。现在的数据系统会把总体工作拆分成一系列能被单个工具高效完成的任务，并通过应用代码将它们缝合起来。</p><p>复杂的数据系统设计起来非常棘手，要考虑的问题很多，这本书着重讨论三个问题：</p><ul><li><strong>可靠性</strong>（Reliability）；</li><li><strong>可伸缩性</strong>（Scalability）；</li><li><strong>可维护性</strong>（Maintainability）。</li></ul><p>这些都属于应用的<strong>非功能性需求</strong>。</p><h2 id="可靠性"><a href="#可靠性" class="headerlink" title="可靠性"></a>可靠性</h2><p>可靠性可以粗略的定义为：<strong>即使出现错误，也能继续正常工作</strong>。当系统发生错误时，我们需要设计好<strong>容错机制</strong>，以防因故障（造成错误的原因）而导致系统失效。</p><p>本书主要讨论以下几种可以恢复的故障种类：</p><ol><li>硬件故障：通常使用<strong>硬件冗余</strong>的手段来解决。但由于计算需求和数据量的增加，需要<strong>引入软件容错机制</strong>才能使得系统的容错性更高；</li><li>软件错误：内部的系统性错误，比起不相关的硬件故障往往可能造成更多的系统失效。并且这类故障通常会潜伏很长时间，直到被异常情况触发。所以我们需要仔细考虑系统中的<strong>假设和交互</strong>；彻底的测试；进程隔离；允许进程崩溃并重启；测量、监控并分析生产环境中的系统行为；</li><li>人为错误：人为错误可能是导致服务中断的首要原因。人是不可靠的，需要通过以下方式来使得系统可靠：<ol><li>以最小化犯错机会的方式设计系统；</li><li>将人们最容易犯错的地方与可能导致失效的地方 <strong>解耦</strong>（decouple）；</li><li>在各个层次进行彻底的测试；</li><li>允许从人为错误中简单快速地恢复；</li><li>配置详细和明确的监控；</li></ol></li></ol><p><strong>容错技术</strong> 可以对终端用户隐藏某些类型的故障。</p><h2 id="可伸缩性"><a href="#可伸缩性" class="headerlink" title="可伸缩性"></a>可伸缩性</h2><blockquote><p><strong>可伸缩性（Scalability）</strong> 是用来描述系统应对负载增长能力的术语</p></blockquote><p>我们讨论可伸缩性应该从“如果系统以特定方式增长，有什么选项可以应对增长？” 或者 “如何增加计算资源来处理额外的负载？” 等问题讨论。</p><h3 id="描述负载"><a href="#描述负载" class="headerlink" title="描述负载"></a>描述负载</h3><blockquote><p>负载可以用一些称为 <strong>负载参数（load parameters）</strong> 的数字来描述。<strong>参数的最佳选择取决于系统架构</strong>，它可能是每秒向 Web 服务器发出的请求、数据库中的读写比率、聊天室中同时活跃的用户数量、缓存命中率或其他东西。除此之外，也许平均情况对你很重要，也许你的瓶颈是少数极端场景。</p></blockquote><h3 id="描述性能"><a href="#描述性能" class="headerlink" title="描述性能"></a>描述性能</h3><p>可用从两个角度来看负载增加会发生什么：</p><ol><li>增加负载参数并<strong>保持系统资源不变</strong>时，系统性能将受到什么影响？</li><li>增加负载参数并<strong>希望保持性能不变</strong>时，需要增加多少系统资源？</li></ol><p>通常使用负载参数的<strong>百分位点</strong>来描述性能。比如说负载参数为响应时间，那么如果第 95 百分位点响应时间是 1.5 秒，则意味着 100 个请求中的 95 个响应时间快于 1.5 秒，而 100 个请求中的 5 个响应时间超过 1.5 秒。</p><h3 id="应对负载的方法"><a href="#应对负载的方法" class="headerlink" title="应对负载的方法"></a>应对负载的方法</h3><ul><li>纵向伸缩：将机器进行升级；</li><li>横向伸缩：将负载分布到多台小机器上。</li></ul><p>现实世界中要将这两种伸缩方式<strong>务实</strong>地结合。即大规模的系统架构并没有一个通用的可伸缩架构，需要根据应用进行具体分析。</p><blockquote><p>一个良好适配应用的可伸缩架构，是围绕着 <strong>假设（assumption）</strong> 建立的。</p></blockquote><h2 id="可维护性"><a href="#可维护性" class="headerlink" title="可维护性"></a>可维护性</h2><blockquote><p>众所周知，软件的大部分开销并不在最初的开发阶段，<strong>而是在持续的维护阶段</strong>，包括修复漏洞、保持系统正常运行、调查失效、适配新的平台、为新的场景进行修改、偿还技术债和添加新的功能。众所周知，软件的大部分开销并不在最初的开发阶段，而是在持续的维护阶段，包括修复漏洞、保持系统正常运行、调查失效、适配新的平台、为新的场景进行修改、偿还技术债和添加新的功能。</p></blockquote><p>为了避免维护时过于痛苦，我们应该遵守以下设计原则：</p><ol><li>可操作性（Operability）：便于运维团队保持系统平稳运行；</li><li>简单性（Simplicity）：使用<strong>抽象</strong>尽可能消除系统中额外的复杂度（并不是指的系统本身所解决的问题的复杂度）；</li><li>可演化性（evolvability）：即在后续能让工程师对系统进行轻松的更改，当需求变化时也能进行适配。</li></ol>]]></content>
       
@@ -33,8 +33,8 @@
     
     <entry>
       <title>about</title>
-      <link href="/project/about/index.html"/>
-      <url>/project/about/index.html</url>
+      <link href="/about/index.html"/>
+      <url>/about/index.html</url>
       
         <content type="html"><![CDATA[<p>Welcome to my blog!<br>The reason I am called “bigboss” is that I am a big fan of the Metal Gear Solid game series.<br>I am a second-year graduate student majoring in computer science. I am very interested in system programming and database kernel, and I hope to work in this field in the future.<br>I will upload some of my notes or project summaries during the learning process.</p>]]></content>
       
@@ -43,9 +43,9 @@
     
     
     <entry>
-      <title>tags</title>
-      <link href="/project/tags/index.html"/>
-      <url>/project/tags/index.html</url>
+      <title>categories</title>
+      <link href="/categories/index.html"/>
+      <url>/categories/index.html</url>
       
         <content type="html"><![CDATA[]]></content>
       
@@ -55,8 +55,8 @@
     
     <entry>
       <title>search</title>
-      <link href="/project/search/index.html"/>
-      <url>/project/search/index.html</url>
+      <link href="/search/index.html"/>
+      <url>/search/index.html</url>
       
         <content type="html"><![CDATA[]]></content>
       
@@ -65,9 +65,9 @@
     
     
     <entry>
-      <title>categories</title>
-      <link href="/project/categories/index.html"/>
-      <url>/project/categories/index.html</url>
+      <title>tags</title>
+      <link href="/tags/index.html"/>
+      <url>/tags/index.html</url>
       
         <content type="html"><![CDATA[]]></content>
       
