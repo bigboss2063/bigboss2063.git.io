@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang=en>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="项目 2 是实现一个可拓展的哈希索引，它包含一个 directory_page，其中存储了指向 bucket_page 的指针，而数据就存储在 bucket_page 中。这些 page 都会存储在之前写的缓存池中。 该哈希索引要支持满&#x2F;空桶的拆分&#x2F;合并，并且也要支持目录的拓展和收缩（Extendible）。 本次项目有三个任务，分别是：  Page Layouts Exten">
+<meta property="og:type" content="article">
+<meta property="og:title" content="CMU 15-445 2021 Fall Project2 Extendible Hash Index">
+<meta property="og:url" content="https://bigboss2063.github.io/post/ae72c972.html">
+<meta property="og:site_name" content="bigboss2063&#39;s blog">
+<meta property="og:description" content="项目 2 是实现一个可拓展的哈希索引，它包含一个 directory_page，其中存储了指向 bucket_page 的指针，而数据就存储在 bucket_page 中。这些 page 都会存储在之前写的缓存池中。 该哈希索引要支持满&#x2F;空桶的拆分&#x2F;合并，并且也要支持目录的拓展和收缩（Extendible）。 本次项目有三个任务，分别是：  Page Layouts Exten">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://cdn.nlark.com/yuque/0/2022/png/23042800/1664702021939-5a3b9083-12ee-475a-a6f1-ed52fd9818fc.png">
+<meta property="og:image" content="https://cdn.nlark.com/yuque/0/2022/png/23042800/1664805475296-670e19f5-0a2c-4420-be46-eff1f8d87191.png">
+<meta property="article:published_time" content="2022-10-03T03:57:37.000Z">
+<meta property="article:modified_time" content="2023-05-02T03:59:19.348Z">
+<meta property="article:author" content="bigboss2063">
+<meta property="article:tag" content="数据库">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://cdn.nlark.com/yuque/0/2022/png/23042800/1664702021939-5a3b9083-12ee-475a-a6f1-ed52fd9818fc.png">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>CMU 15-445 2021 Fall Project2 Extendible Hash Index</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="Top" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/categories/">categories</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/bigboss2063">Projects</a></li><!--
+     --><!--
+       --><li><a href="/search/">Search</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="Previous post" href="/post/be781c2c.html"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="Next post" href="/post/bd7291a8.html"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="Back to top" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="Share post" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">Previous post</span>
+      <span id="i-next" class="info" style="display:none;">Next post</span>
+      <span id="i-top" class="info" style="display:none;">Back to top</span>
+      <span id="i-share" class="info" style="display:none;">Share post</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://bigboss2063.github.io/post/ae72c972.html"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://bigboss2063.github.io/post/ae72c972.html&text=CMU 15-445 2021 Fall Project2 Extendible Hash Index"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://bigboss2063.github.io/post/ae72c972.html&title=CMU 15-445 2021 Fall Project2 Extendible Hash Index"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://bigboss2063.github.io/post/ae72c972.html&is_video=false&description=CMU 15-445 2021 Fall Project2 Extendible Hash Index"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=CMU 15-445 2021 Fall Project2 Extendible Hash Index&body=Check out this article: https://bigboss2063.github.io/post/ae72c972.html"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://bigboss2063.github.io/post/ae72c972.html&title=CMU 15-445 2021 Fall Project2 Extendible Hash Index"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://bigboss2063.github.io/post/ae72c972.html&title=CMU 15-445 2021 Fall Project2 Extendible Hash Index"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://bigboss2063.github.io/post/ae72c972.html&title=CMU 15-445 2021 Fall Project2 Extendible Hash Index"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://bigboss2063.github.io/post/ae72c972.html&title=CMU 15-445 2021 Fall Project2 Extendible Hash Index"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://bigboss2063.github.io/post/ae72c972.html&name=CMU 15-445 2021 Fall Project2 Extendible Hash Index&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://bigboss2063.github.io/post/ae72c972.html&t=CMU 15-445 2021 Fall Project2 Extendible Hash Index"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    <div id="toc">
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#Extendible-Hash-Index"><span class="toc-number">1.</span> <span class="toc-text">Extendible Hash Index</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#TASK-1-PAGE-LAYOUTS"><span class="toc-number">2.</span> <span class="toc-text">TASK #1 - PAGE LAYOUTS</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#HASH-TABLE-DIRECTORY-PAGE"><span class="toc-number">2.1.</span> <span class="toc-text">HASH TABLE DIRECTORY PAGE</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%A6%82%E5%BF%B5"><span class="toc-number">2.1.1.</span> <span class="toc-text">概念</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%AE%9E%E7%8E%B0"><span class="toc-number">2.1.2.</span> <span class="toc-text">实现</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#HASH-TABLE-BUCKET-PAGE"><span class="toc-number">2.2.</span> <span class="toc-text">HASH TABLE BUCKET PAGE</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%A6%82%E5%BF%B5-1"><span class="toc-number">2.2.1.</span> <span class="toc-text">概念</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%AE%9E%E7%8E%B0-1"><span class="toc-number">2.2.2.</span> <span class="toc-text">实现</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#TASK-2-HASH-TABLE-IMPLEMENTATION"><span class="toc-number">3.</span> <span class="toc-text">TASK #2 - HASH TABLE IMPLEMENTATION</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A6%82%E5%BF%B5-2"><span class="toc-number">3.1.</span> <span class="toc-text">概念</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%9E%E7%8E%B0-2"><span class="toc-number">3.2.</span> <span class="toc-text">实现</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#TASK-3-CONCURRENCY-CONTROL"><span class="toc-number">4.</span> <span class="toc-text">TASK #3 - CONCURRENCY CONTROL</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">5.</span> <span class="toc-text">总结</span></a></li></ol>
+    </div>
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        CMU 15-445 2021 Fall Project2 Extendible Hash Index
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">bigboss2063</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2022-10-03T03:57:37.000Z" class="dt-published" itemprop="datePublished">2022-10-03</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/lab-%E6%96%87%E6%A1%A3/">lab 文档</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <p>项目 2 是实现一个可拓展的哈希索引，它包含一个 directory_page，其中存储了指向 bucket_page 的指针，而数据就存储在 bucket_page 中。这些 page 都会存储在之前写的缓存池中。</p>
+<p>该哈希索引要支持满&#x2F;空桶的拆分&#x2F;合并，并且也要支持目录的拓展和收缩（<strong>Extendible</strong>）。</p>
+<p>本次项目有三个任务，分别是：</p>
+<ul>
+<li>Page Layouts</li>
+<li>Extendible Hashing Implementation</li>
+<li>Concurrency Control</li>
+</ul>
+<h2 id="Extendible-Hash-Index"><a href="#Extendible-Hash-Index" class="headerlink" title="Extendible Hash Index"></a>Extendible Hash Index</h2><p>要完成这个项目首先一定要把 Extendible Hash Index 的流程弄清楚，否则写起来会缺胳膊少腿。可以阅读这篇文章了解先算法流程：</p>
+<p><a target="_blank" rel="noopener" href="https://www.geeksforgeeks.org/extendible-hashing-dynamic-approach-to-dbms/">https://www.geeksforgeeks.org/extendible-hashing-dynamic-approach-to-dbms/</a></p>
+<p>，后文的内容默认读者都是已经看过这篇教程，这篇图文教程写的非常清楚，但是并没有写如何收缩，剩下的细节在后面实现中提到。</p>
+<h2 id="TASK-1-PAGE-LAYOUTS"><a href="#TASK-1-PAGE-LAYOUTS" class="headerlink" title="TASK #1 - PAGE LAYOUTS"></a>TASK #1 - PAGE LAYOUTS</h2><p>这个任务就是要实现 directory_page 和 bucket_page，分别来存储哈希表的目录和数据。</p>
+<p>要通过 <strong>Task #1</strong> ，两种页都只需要实现部分方法即可：</p>
+<ul>
+<li><strong>Bucket Page:</strong> - Insert - Remove - IsOccupied - IsReadable - KeyAt - ValueAt</li>
+<li><strong>Directory Page:</strong> - GetGlobalDepth - IncrGlobalDepth - SetLocalDepth - SetBucketPageId - GetBucketPageId</li>
+</ul>
+<p>但为了看起来更有整体性，所以在写的时候就将整个 Extendible Hash Index 所需要的东西全部写上了。</p>
+<h3 id="HASH-TABLE-DIRECTORY-PAGE"><a href="#HASH-TABLE-DIRECTORY-PAGE" class="headerlink" title="HASH TABLE DIRECTORY PAGE"></a>HASH TABLE DIRECTORY PAGE</h3><h4 id="概念"><a href="#概念" class="headerlink" title="概念"></a>概念</h4><p><strong>GlobalDepth：</strong></p>
+<p>当 Extendible Hash Index 进行 GetValue、Insert、Remove 时，GlobalDepth 用于确定这个 key 对应的 directory_index 在哪，具体来说就是取这个 key 经过哈希之后的 <strong>低 GlobalDepth 位</strong>来确定 directory_index。比如当前要插入的 key 哈希之后得到的结果是 00110，GlobalDepth 是 3，那么取低 3 位也就是 110，那么 directory_index 就等于 6。但项目中给出的公式是：<code>DirectoryIndex = Hash(key) &amp; GLOBAL_DEPTH_MASK</code>， GLOBAL_DEPTH_MASK 得求出来，其实它就等于 GloablDepth 这么多个 1，所以 GetGlobalDepthMask 函数就很好实现了：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">return</span> (<span class="number">1</span> &lt;&lt; global_depth_) - <span class="number">1</span>; <span class="comment">// 得到 GlobalDepth 这么多个 1.</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>LocalDepth：</strong></p>
+<p>LocalDepth 并不与 directory_index 相关，而是与 bucket 相关。我们会根据LocalDepth 和 GlobalDepth 的关系来决定当发生 bucket_page 溢出，或者 bucket_page 为空时需要干的事情（具体要到 Extendible Hash Table 的实现）。GetLocalDepthMask 的实现方式跟 GetGlobalDepthMask 一样。</p>
+<p><strong>SplitImageIndex：</strong></p>
+<p>这个指的是 bucket_page 分裂之后，它分裂出来的那个 bucket_page 的 directory_index，只要将当前 bucket的  directory_index 中 LocalDepth 对应的那个位取反即可。比如说 directory_index 是 001，LocalDepth 为 2，那么它的 split_image_index 就是 011，可以通过异或运算来实现：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">return</span> bucket_idx ^ (<span class="number">1</span> &lt;&lt; (local_depth - <span class="number">1</span>));</span><br></pre></td></tr></table></figure>
+
+<h4 id="实现"><a href="#实现" class="headerlink" title="实现"></a>实现</h4><p>Mask 和 SplitImageIndex 如何求上面已经写了，还剩下就是 <strong>IncrGlobalDepth、DecrGlobalDepth、Size</strong>。</p>
+<p><strong>IncrGlobalDepth：</strong>当 GlobalDepth 增加时，就是目录需要扩容了，<strong>GlobalDepth 增加 1，目录的容量就增加一倍</strong>，所以实现这个函数时，<strong>我们要把目录扩容前的 bucket 分布情况拷贝一份到扩容后的位置</strong>，也就是此时一个 bucket_page 是有多指针指向它的。注意此时数据还并未进行迁移，因为新的 bucket_page 还没插进来，只是先把目录拓展。</p>
+<p><img src="https://cdn.nlark.com/yuque/0/2022/png/23042800/1664702021939-5a3b9083-12ee-475a-a6f1-ed52fd9818fc.png" alt="img"></p>
+<p><strong>DecrGlobalDepth：</strong>当 GlobalDepth 减少时，就是目录需要缩小了，<strong>GlobalDepth 减少 1，目录的容量就减少一倍</strong>，但注意只有当所有的 LocalDepth 都小于 GlobalDepth 时，才能减少 GlobalDepth，如果能够减少，<strong>我们只需要 global_depth_–</strong> <strong>即可</strong>，因为 GlobalDepth 减少了，后面的无用位置其实已经访问不到了。</p>
+<p><strong>Size：</strong>返回当前目录的长度，<strong>GlobalDepth 有多少位，目录长度就是 2 的多少次方</strong>，即 1&lt;&lt;global_depth_。</p>
+<h3 id="HASH-TABLE-BUCKET-PAGE"><a href="#HASH-TABLE-BUCKET-PAGE" class="headerlink" title="HASH TABLE BUCKET PAGE"></a>HASH TABLE BUCKET PAGE</h3><h4 id="概念-1"><a href="#概念-1" class="headerlink" title="概念"></a>概念</h4><p>实现 bucket_page 同样也需要用到很多位运算，因为  occupied_ 数组和  readable_ 数组都是 char 类型的数组，而一个 char 是一个字节，即 8 比特，所以可以标识 bucket_page 中八个位置的情况，我们要用 bucket_index 在 char 数组中找到那个对应的比特。</p>
+<p>occupied_ 数组的含义：<strong>如果 array 的第 i 个索引曾经有被占用过，那 occupied_ 数组的第 i 个比特位就是1。注意：一旦设置为 1，那么这个位置之后就不会再变成 0 了，除非 bucket_page 内容被清空。</strong></p>
+<p>readable_ 数组的含义：<strong>如果 array 的第 i 个索引当前存储了可读的值，那 readable_ 数组的第 i 个比特就是 1 。</strong></p>
+<h4 id="实现-1"><a href="#实现-1" class="headerlink" title="实现"></a>实现</h4><p>首先要实现的是 <strong>IsOccupied、SetOccupied、IsReadable、SetReadable</strong> 函数。我选择的是用除法的方式来确定索引对应的比特位：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">const</span> <span class="keyword">auto</span> [char_pos, bit_pos] = std::<span class="built_in">div</span>(bucket_idx, CHAR_BIT_SIZE);</span><br></pre></td></tr></table></figure>
+
+<p>char_pos 即 char 数组中的第几个字符，bit_pos 则是该字符中的第几位是我们要找的位。假设 ch 为一个字符。</p>
+<p>判断找出来的位是否为 1：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">((ch &gt;&gt; bit_pos) &amp; <span class="number">1</span>) == <span class="number">1</span>;</span><br></pre></td></tr></table></figure>
+
+<p>将某一位设置为 1：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ch |= (<span class="number">1U</span> &lt;&lt; bit_pos);</span><br></pre></td></tr></table></figure>
+
+<p>将某一位设置为 0：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ch &amp;= ~(<span class="number">1U</span> &lt;&lt; bit_pos);</span><br></pre></td></tr></table></figure>
+
+<p>接下来就可以实现 GetValue、Insert、Remove 了：</p>
+<p><strong>Insert：</strong></p>
+<p>插入是可以插入 key 重复，<strong>但不能插入 key 和 value 同时重复的值的，所以不能找到一个空位就插进去，因为后面可能还有 KV 都重复的条目</strong>，要全都检查一遍。</p>
+<p><strong>Remove：</strong></p>
+<p>找到 KV 都符合的那个条目，将 readable_ 数组的这个位置设置为 0 即可。</p>
+<p><strong>GetValue：</strong></p>
+<p>将所有符合 key 的条目都放进 result 数组中，再返回 result 是否为空即可。</p>
+<p><strong>Remove 和 GetValue 有个可以优化的点就是一旦到了一个位置的 occupied 为 0，那么就可以停止遍历了</strong>，因为后面已经没有数据。</p>
+<h2 id="TASK-2-HASH-TABLE-IMPLEMENTATION"><a href="#TASK-2-HASH-TABLE-IMPLEMENTATION" class="headerlink" title="TASK #2 - HASH TABLE IMPLEMENTATION"></a>TASK #2 - HASH TABLE IMPLEMENTATION</h2><h3 id="概念-2"><a href="#概念-2" class="headerlink" title="概念"></a>概念</h3><p>现在开始可以着手实现可拓展哈希表了，我们要在刚刚之前实现的 bucket_page 和 directory_page 的基础上实现 GetValue、Insert、Remove。如果看了前文提到的博客，应该大致流程都已经了解了，本文再对具体的实现步骤和细节做一个总结。</p>
+<h3 id="实现-2"><a href="#实现-2" class="headerlink" title="实现"></a>实现</h3><p><strong>构造函数：</strong></p>
+<p>我在构造函数中新建了一个 directory_page 和两个 bucket_page，并将 GlobalDepth 设置为 1，再将这两个 bucket_page 的 id 放进目录中，再测试中将所有数据删除后就会恢复到现在的状态，GlobalDepth 和 LocalDepth 最小为 1。<strong>记得 pin 过的页一定要及时的 unpin。</strong></p>
+<p>将 新创建的 Page 对象转成 directory_page 或 bucket_page 可以用下面这种方式：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">auto</span> dir_page = <span class="built_in">reinterpret_cast</span>&lt;HashTableDirectoryPage *&gt;(buffer_pool_manager_-&gt;<span class="built_in">NewPage</span>(&amp;<span class="keyword">this</span>-&gt;directory_page_id_)-&gt;<span class="built_in">GetData</span>());</span><br></pre></td></tr></table></figure>
+
+<p>在实现 FetchDirectoryPage 和 FetchBucketPage 时可以用同样的方法。</p>
+<p><strong>GetValue：</strong></p>
+<p>这个函数的实现没有什么好说，将 directory_page 和 key 所在的 bucket_page 拉出来调用查询方法即可。</p>
+<p><strong>Insert：</strong></p>
+<p>Insert 的实现细节很多，有非常多需要注意的地方，具体的实现步骤如下：</p>
+<ol>
+<li>将 directory_page 和 key 所在的 bucket_page 拉取出来。</li>
+<li>尝试进行插入，若插入成功则直接返回 true，否则进行步骤 3 。</li>
+<li>判断 bucket_page 是否已满，如果未满还是插入失败那么只能是已经重复，返回 false，否则进行步骤 4 。</li>
+<li>如果 bucket_page 已满，<strong>但是这时候不能直接进行分裂</strong>，因为就算是满了的情况，也有可能已经重复，如果这时候分裂就会导致插入错误（我因为这个错误卡了很久），<strong>还要再检查一遍是否重复</strong>。</li>
+<li>这个时候将刚刚用到的页 unpin，进入 split insert 阶段。</li>
+<li>将需要分裂的 bucket_page 的 LocalDepth 加 1，判断 LocalDepth 是否大于 GlobalDepth，如果大于则将 directory 进行扩容，即调用之前实现的 IncrGlobalDepth 函数。</li>
+<li>获取到需要分裂的 bucket_page 的 SplitImageIndex，并为这个兄弟 bucket 创建一个新的页（<strong>注意创建了页之后就不要再 Fetch 了</strong>），取出原 bucket_page 中的所有数据，<strong>再将数据重新散列到这两个页中。</strong></li>
+<li>这里有一个需要注意的地方，一个 bucket 分裂之后，仍然有可能有多个指针指向它，如下图所示。当我们往第五个 bucket_page 里再插入一个数据时，它进行分裂后，它自身和分裂出来的那个页仍然各自都有两个指针指向它，<strong>所以我们不止要设置</strong> <strong>SplitImageIndex 那个位置的指向新分裂出来的页，和它同级的另一个指针也需要指向这个页，并且 LocalDepth 也要更新成一样的。</strong></li>
+</ol>
+<p><img src="https://cdn.nlark.com/yuque/0/2022/png/23042800/1664805475296-670e19f5-0a2c-4420-be46-eff1f8d87191.png" alt="img"></p>
+<ol>
+<li>最后再次尝试插入需要插入的那个值，<strong>这里要重新通过哈希和 mask 来获取应该插入的地方</strong>。</li>
+<li>将使用到的页 unpin 并返回。</li>
+</ol>
+<p>Remove：</p>
+<ol>
+<li>将 directory_page 和 key 所在的 bucket_page 拉取出来。</li>
+<li>尝试进行删除，如果删除失败则直接返回 false，否则将使用到的页 unpin 并进行步骤 3，调用 Merge 函数 。</li>
+<li>再次拉取 directory_page 和 key 所在的 bucket_page，检查 bucket_page 是否为空，如果不为空则 unpin 并返回，否则进行步骤 4 。</li>
+<li>如果该 bucket_page 的 LocalDepth 小于等于 1，或 它不等于它 <strong>SplitImage</strong> 的 LocalDepth，则 unpin 并返回，否则进行步骤 5 。</li>
+<li><strong>将该 bucket_page 的 SplitImage 的 LocalDepth 减 1，并将 LocalDepth 减 1 后的所有同级 bucket 的 LocalDepth 和指向的 bucket_page 都设置为 SplitImage 。</strong>这一步跟 <strong>Insert 的步骤 8</strong> 类似。</li>
+<li><strong>一定要先 unpin 该 bucket_page</strong> ，然后再将这个页删除。</li>
+<li>将使用到的页 unpin 并返回。</li>
+</ol>
+<p>Extendible Hash Table 到这里就已经可以通过<strong>除了并发控制测试之外</strong>的所有测试了。</p>
+<h2 id="TASK-3-CONCURRENCY-CONTROL"><a href="#TASK-3-CONCURRENCY-CONTROL" class="headerlink" title="TASK #3 - CONCURRENCY CONTROL"></a>TASK #3 - CONCURRENCY CONTROL</h2><p>最后我们要进行并发控制，给页上锁的方式项目说明中已经详细写到了，这里就不再多做说明，只说一下加锁的思路。</p>
+<p><strong>GetValue：</strong></p>
+<p>table_latch_ 和 bucket_page 的锁均上读锁即可。</p>
+<p><strong>Insert：</strong></p>
+<p>插入阶段，table_latch_ 只需要上读锁即可，但是对 bucket_page 要上写锁，因为此时只对一个 bucket_page 进行修改。</p>
+<p><strong>SplitInsert：</strong></p>
+<p>这个阶段因为目录也有可能被修改，所以两个都需要上写锁。</p>
+<p><strong>Remove：</strong></p>
+<p>跟 Insert 同理。</p>
+<p><strong>Merge：</strong></p>
+<p>跟 SplitInsert 同理。</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>项目二整体还是非常难的，首先一定要认真搞清楚 Extendible Hash Table 到底是什么再来动手，否则从一开始就会理解不了。然后用到了很多位运算，如果之前没什么经验的话也需要琢磨一下。现在这个版本等整个项目写完了再考虑优化一下吧，提交上去发现发现花了三十几秒。</p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">Home</a></li>
+        
+          <li><a href="/categories/">categories</a></li>
+        
+          <li><a href="/about/">About</a></li>
+        
+          <li><a href="/archives/">Writing</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/bigboss2063">Projects</a></li>
+        
+          <li><a href="/search/">Search</a></li>
+        
+      </ul>
+    </div>
+
+    <div id="toc-footer" style="display: none">
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#Extendible-Hash-Index"><span class="toc-number">1.</span> <span class="toc-text">Extendible Hash Index</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#TASK-1-PAGE-LAYOUTS"><span class="toc-number">2.</span> <span class="toc-text">TASK #1 - PAGE LAYOUTS</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#HASH-TABLE-DIRECTORY-PAGE"><span class="toc-number">2.1.</span> <span class="toc-text">HASH TABLE DIRECTORY PAGE</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%A6%82%E5%BF%B5"><span class="toc-number">2.1.1.</span> <span class="toc-text">概念</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%AE%9E%E7%8E%B0"><span class="toc-number">2.1.2.</span> <span class="toc-text">实现</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#HASH-TABLE-BUCKET-PAGE"><span class="toc-number">2.2.</span> <span class="toc-text">HASH TABLE BUCKET PAGE</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%A6%82%E5%BF%B5-1"><span class="toc-number">2.2.1.</span> <span class="toc-text">概念</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%AE%9E%E7%8E%B0-1"><span class="toc-number">2.2.2.</span> <span class="toc-text">实现</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#TASK-2-HASH-TABLE-IMPLEMENTATION"><span class="toc-number">3.</span> <span class="toc-text">TASK #2 - HASH TABLE IMPLEMENTATION</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A6%82%E5%BF%B5-2"><span class="toc-number">3.1.</span> <span class="toc-text">概念</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%9E%E7%8E%B0-2"><span class="toc-number">3.2.</span> <span class="toc-text">实现</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#TASK-3-CONCURRENCY-CONTROL"><span class="toc-number">4.</span> <span class="toc-text">TASK #3 - CONCURRENCY CONTROL</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">5.</span> <span class="toc-text">总结</span></a></li></ol>
+    </div>
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://bigboss2063.github.io/post/ae72c972.html"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://bigboss2063.github.io/post/ae72c972.html&text=CMU 15-445 2021 Fall Project2 Extendible Hash Index"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://bigboss2063.github.io/post/ae72c972.html&title=CMU 15-445 2021 Fall Project2 Extendible Hash Index"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://bigboss2063.github.io/post/ae72c972.html&is_video=false&description=CMU 15-445 2021 Fall Project2 Extendible Hash Index"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=CMU 15-445 2021 Fall Project2 Extendible Hash Index&body=Check out this article: https://bigboss2063.github.io/post/ae72c972.html"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://bigboss2063.github.io/post/ae72c972.html&title=CMU 15-445 2021 Fall Project2 Extendible Hash Index"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://bigboss2063.github.io/post/ae72c972.html&title=CMU 15-445 2021 Fall Project2 Extendible Hash Index"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://bigboss2063.github.io/post/ae72c972.html&title=CMU 15-445 2021 Fall Project2 Extendible Hash Index"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://bigboss2063.github.io/post/ae72c972.html&title=CMU 15-445 2021 Fall Project2 Extendible Hash Index"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://bigboss2063.github.io/post/ae72c972.html&name=CMU 15-445 2021 Fall Project2 Extendible Hash Index&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://bigboss2063.github.io/post/ae72c972.html&t=CMU 15-445 2021 Fall Project2 Extendible Hash Index"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> Menu</a>
+        <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> TOC</a>
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> Share</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> Top</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2023
+    bigboss2063
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/categories/">categories</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/bigboss2063">Projects</a></li><!--
+     --><!--
+       --><li><a href="/search/">Search</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"Copy to clipboard!\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "Copied!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>

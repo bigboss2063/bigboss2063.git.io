@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang=en>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="项目 4 我们需要为 DBMS 实现一个锁管理器，并且利用锁管理器来实现并发的执行查询计划。锁管理器负责追踪事务涉及到的元组级的锁（行锁），并且基于隔离级别来授予&#x2F;释放共享锁（Shared Lock）和排它锁（Exclusive Lock）。 任务如下：  Task #1 - Lock Manager Task #2 - DeadLock Prevention Task #3 - Con">
+<meta property="og:type" content="article">
+<meta property="og:title" content="CMU 15-445 2021 Fall Project4 Concureency Control">
+<meta property="og:url" content="https://bigboss2063.github.io/post/12f55eb9.html">
+<meta property="og:site_name" content="bigboss2063&#39;s blog">
+<meta property="og:description" content="项目 4 我们需要为 DBMS 实现一个锁管理器，并且利用锁管理器来实现并发的执行查询计划。锁管理器负责追踪事务涉及到的元组级的锁（行锁），并且基于隔离级别来授予&#x2F;释放共享锁（Shared Lock）和排它锁（Exclusive Lock）。 任务如下：  Task #1 - Lock Manager Task #2 - DeadLock Prevention Task #3 - Con">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2022-10-09T04:00:35.000Z">
+<meta property="article:modified_time" content="2023-05-02T04:01:28.838Z">
+<meta property="article:author" content="bigboss2063">
+<meta property="article:tag" content="数据库">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>CMU 15-445 2021 Fall Project4 Concureency Control</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="Top" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/categories/">categories</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/bigboss2063">Projects</a></li><!--
+     --><!--
+       --><li><a href="/search/">Search</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="Previous post" href="/post/f71bd04b.html"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="Next post" href="/post/be781c2c.html"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="Back to top" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="Share post" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">Previous post</span>
+      <span id="i-next" class="info" style="display:none;">Next post</span>
+      <span id="i-top" class="info" style="display:none;">Back to top</span>
+      <span id="i-share" class="info" style="display:none;">Share post</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://bigboss2063.github.io/post/12f55eb9.html"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://bigboss2063.github.io/post/12f55eb9.html&text=CMU 15-445 2021 Fall Project4 Concureency Control"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://bigboss2063.github.io/post/12f55eb9.html&title=CMU 15-445 2021 Fall Project4 Concureency Control"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://bigboss2063.github.io/post/12f55eb9.html&is_video=false&description=CMU 15-445 2021 Fall Project4 Concureency Control"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=CMU 15-445 2021 Fall Project4 Concureency Control&body=Check out this article: https://bigboss2063.github.io/post/12f55eb9.html"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://bigboss2063.github.io/post/12f55eb9.html&title=CMU 15-445 2021 Fall Project4 Concureency Control"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://bigboss2063.github.io/post/12f55eb9.html&title=CMU 15-445 2021 Fall Project4 Concureency Control"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://bigboss2063.github.io/post/12f55eb9.html&title=CMU 15-445 2021 Fall Project4 Concureency Control"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://bigboss2063.github.io/post/12f55eb9.html&title=CMU 15-445 2021 Fall Project4 Concureency Control"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://bigboss2063.github.io/post/12f55eb9.html&name=CMU 15-445 2021 Fall Project4 Concureency Control&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://bigboss2063.github.io/post/12f55eb9.html&t=CMU 15-445 2021 Fall Project4 Concureency Control"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    <div id="toc">
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#TASK-1-LOCK-MANAGER-AND-TASK-2-DEADLOCK-PREVENTION"><span class="toc-number">1.</span> <span class="toc-text">TASK #1 - LOCK MANAGER AND TASK #2 - DEADLOCK PREVENTION</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#NeedWait"><span class="toc-number">1.1.</span> <span class="toc-text">NeedWait</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#NeedWaitUpgrade"><span class="toc-number">1.2.</span> <span class="toc-text">NeedWaitUpgrade</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#LockShared"><span class="toc-number">1.3.</span> <span class="toc-text">LockShared</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#LockExclusive"><span class="toc-number">1.4.</span> <span class="toc-text">LockExclusive</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#LockUpgrade"><span class="toc-number">1.5.</span> <span class="toc-text">LockUpgrade</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Unlock"><span class="toc-number">1.6.</span> <span class="toc-text">Unlock</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#TASK-3-CONCURRENT-QUERY-EXECUTION"><span class="toc-number">2.</span> <span class="toc-text">TASK #3 - CONCURRENT QUERY EXECUTION</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#SeqScanExecutor"><span class="toc-number">2.1.</span> <span class="toc-text">SeqScanExecutor</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#InsertExecutor"><span class="toc-number">2.2.</span> <span class="toc-text">InsertExecutor</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#UpdateExecutor"><span class="toc-number">2.3.</span> <span class="toc-text">UpdateExecutor</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#DeleteExecutor"><span class="toc-number">2.4.</span> <span class="toc-text">DeleteExecutor</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Conclusion"><span class="toc-number">3.</span> <span class="toc-text">Conclusion</span></a></li></ol>
+    </div>
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        CMU 15-445 2021 Fall Project4 Concureency Control
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">bigboss2063</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2022-10-09T04:00:35.000Z" class="dt-published" itemprop="datePublished">2022-10-09</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/lab-%E6%96%87%E6%A1%A3/">lab 文档</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <p>项目 4 我们需要为 DBMS 实现一个<strong>锁管理器</strong>，并且利用锁管理器来实现并发的执行查询计划。锁管理器负责追踪事务涉及到的<strong>元组级的锁（行锁）</strong>，并且基于隔离级别来授予&#x2F;释放<strong>共享锁（Shared Lock）和排它锁（Exclusive Lock）</strong>。</p>
+<p>任务如下：</p>
+<ol>
+<li>Task #1 - Lock Manager</li>
+<li>Task #2 - DeadLock Prevention</li>
+<li>Task #3 - Concurrent Query Execution</li>
+</ol>
+<p>本次项目的难度集中在 Task #1 和 Task #2，如果一些概念不清楚的话很容易到处出现问题，所以在写之前先把隔离级别、两段式锁还有 Wound-Wait 等概念理清楚再来动手写代码。并且一定一定听项目说明中说的先把 <code>transaction.h</code>和 <code>lock_manager.h</code> 中的 API 了解清楚。</p>
+<p><a target="_blank" rel="noopener" href="https://juejin.cn/post/7208793045479505980">https://juejin.cn/post/7208793045479505980</a></p>
+<h2 id="TASK-1-LOCK-MANAGER-AND-TASK-2-DEADLOCK-PREVENTION"><a href="#TASK-1-LOCK-MANAGER-AND-TASK-2-DEADLOCK-PREVENTION" class="headerlink" title="TASK #1 - LOCK MANAGER AND TASK #2 - DEADLOCK PREVENTION"></a>TASK #1 - LOCK MANAGER AND TASK #2 - DEADLOCK PREVENTION</h2><p>任务 1 中我们要实现一个全局的锁管理器，每次有事务要访问&#x2F;修改某个元组时，我们就用锁管理器对这个元组上锁，并且锁管理器要根据事务的隔离级别来授予或者释放锁。任务 2 需要使用 <strong>WOUND-WAIT</strong> 算法实现死锁预防</p>
+<p>在 2PL 下各个隔离级别的行为：</p>
+<ul>
+<li><strong>Read Uncommitted：</strong>读取不需要获取锁，但是<strong>写需要获取排他锁</strong>，用完直接释放，不需要等待提交。</li>
+<li><strong>Read Committed：读取需要共享锁，写需要排他锁</strong>，用完直接释放，不需要等待提交。</li>
+<li><strong>Repeatable Read：读取需要共享锁，写需要排他锁</strong>，不能直接释放，必须等到事务提交或者中止时才能释放。</li>
+</ul>
+<p>清楚了在 2PL 下各个隔离级别下的不同行为，再来实现 Lock Manager。</p>
+<h3 id="NeedWait"><a href="#NeedWait" class="headerlink" title="NeedWait"></a>NeedWait</h3><p>我实现了一个 NeedWait 函数来判断事务是否需要阻塞等待，并且使用 <strong>WOUND-WAIT</strong> 来实现死锁预防，基本的使用方式如下：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">std::unique_lock&lt;std::mutex&gt; <span class="title">guard</span><span class="params">(latch_)</span></span>;</span><br><span class="line"><span class="comment">// ...</span></span><br><span class="line"><span class="keyword">while</span> (<span class="built_in">NeedWait</span>(txn, rid, LockMode::EXCLUSIVE)) &#123;</span><br><span class="line">	lock_table_[rid].cv_.<span class="built_in">wait</span>(guard);</span><br><span class="line">    <span class="keyword">if</span> (txn-&gt;<span class="built_in">GetState</span>() == TransactionState::ABORTED) &#123;</span><br><span class="line">      <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>NeedWait 函数传入事务想要获取的锁的类型，根据锁类型来判断是否需要阻塞等待：</p>
+<ol>
+<li>事务想要获取共享锁：如果等待队列中有已经授予的排他锁，那么事务阻塞等待。</li>
+<li>事务想要获取排他锁：如果等待队列中有已经授予的锁，那么事务阻塞等待。</li>
+</ol>
+<p>初步判断过后，如果不需要阻塞等待，直接能拿到锁，就返回 false，没有必要再进行死锁预防了（现在并不会产生竞态）。但是如果需要阻塞等待，这时再进行死锁预防，进行死锁预防前将返回值置为 false。</p>
+<p>Wound-Wait 概念如下：</p>
+<ol>
+<li><strong>Timestamp(T**<strong>n</strong></strong>) &lt; Timestamp(T<strong><strong>k</strong></strong>)<em>*, then Tn forces Tk to be killed − that is Tn “wounds” Tk. *T**k</em> <em>is restarted later with a random delay but with the same timestamp(k).</em></li>
+<li><strong>Timestamp(T**<strong>n</strong></strong>) &gt; Timestamp(T<strong><strong>k</strong></strong>)**, then Tn is forced to “wait” until the resource is available.</li>
+</ol>
+<p>将返回值置为 false，遍历等待队列：</p>
+<ul>
+<li>当遇到一个事务的 id 比自己大（这个事务比自己年轻）并且这个事务与自己冲突时，就将其强制中止，接着跳过这轮循环；</li>
+<li>当遇到一个事务的 id 比自己小并且这个事务与自己冲突时，就需要阻塞等待；</li>
+<li>遍历结束后，如果发生了中止，就进行一次通知，唤醒那些被中止的事务返回；</li>
+<li><strong>及时清理掉等待队列中被中止的事务</strong>，否则会出现一个 younger 在等待一个被中止的 older 释放锁。</li>
+</ul>
+<p>最后返回最终的判断结果。</p>
+<h3 id="NeedWaitUpgrade"><a href="#NeedWaitUpgrade" class="headerlink" title="NeedWaitUpgrade"></a>NeedWaitUpgrade</h3><p>这个函数用作 LockUpgrade，<strong>由于 LockUpgrade 是在持有共享锁的情况下升级，所以不需要初步判断是否需要等待</strong>，直接进行死锁预防即可，并且需要获取的锁类型固定是排他锁。</p>
+<p>同样将返回值置为 false，遍历等待队列：</p>
+<ul>
+<li>当遇到一个事务的 id 比自己大并且这个事务与自己冲突时，就将其强制中止，接着跳过这轮循环；</li>
+<li><strong>否则是肯定要等待的</strong>，因为要获取的是排他锁。</li>
+<li>遍历结束后，如果发生了中止，就进行一次通知，唤醒那些被中止的事务返回；</li>
+<li><strong>及时清理掉等待队列中被中止的事务。</strong></li>
+</ul>
+<p>最后返回最终的判断结果。</p>
+<h3 id="LockShared"><a href="#LockShared" class="headerlink" title="LockShared"></a>LockShared</h3><p>这个函数用于获取某个元组的共享锁，<strong>调用该函数的线程会阻塞到成功获取锁或者该事务中止</strong>。在尝试获取锁之前，先根据 2PL 和  事务的隔离级别，来提前做一些判断：</p>
+<ol>
+<li>如果该事务已经中断，直接返回 false。</li>
+<li>如果该事务处于 Shrinking 阶段，就意味着不能再获取锁了，直接中止事务，并抛出异常。</li>
+<li>如果该事务的隔离级别是 Read UnCommitted，就意味着该事务进行读的时候不需要获取锁，直接中止事务，并抛出异常。</li>
+<li>如果事务已经获取了共享锁，那么就直接返回 true。</li>
+</ol>
+<p>然后新建一个 LockRequest，并将其插入到对应的等待队列中去，开始调用 <strong>NeedWait</strong> 进行判断，如果该事务在等待时中止了，就返回 false。当成功获取了共享锁时，把该线程在等待队列中的 LockRequest 的 granted 属性设置为 true，该事务进入 Growing 阶段，将获取到的共享锁放入事务的 <strong>SharedLockSet</strong> 中并返回 true。</p>
+<h3 id="LockExclusive"><a href="#LockExclusive" class="headerlink" title="LockExclusive"></a>LockExclusive</h3><p>该函数的实现跟 LockShared 非常类似，需要注意的就是即使事务的隔离级别是 Read Uncommitted 它也是要获取排他锁来进行写操作的，这时候不能直接中止。</p>
+<h3 id="LockUpgrade"><a href="#LockUpgrade" class="headerlink" title="LockUpgrade"></a>LockUpgrade</h3><p>之前对锁升级的概念存在误区，写成了先将共享锁释放掉，再去尝试获取排他锁，后来在一篇帖子中看到了这样一段话：</p>
+<p>Upgrade: A S(A) can be upgraded to X(A) if Ti is the only transaction holding the S-lock on element A.</p>
+<p><a target="_blank" rel="noopener" href="https://www.geeksforgeeks.org/lock-based-concurrency-control-protocol-in-dbms">https://www.geeksforgeeks.org/lock-based-concurrency-control-protocol-in-dbms</a></p>
+<p>即一个元组的共享锁在只有一个事务持有时，就可以将其升级成排他锁，<strong>所以锁升级是在该事务持有共享锁的情况下进行的，</strong>否则锁升级好像就没有什么意义了，就是直接获取排他锁。</p>
+<p>同样，在等待升级锁之前，也可以先进行一系列判断：</p>
+<ol>
+<li>如果事务已经中断、事务没有持有该元组的共享锁或已经有事务（<code>lock_table_[rid].upgrading_ != INVALID_TXN_ID</code>）在等待升级时直接返回 false。</li>
+<li>如果事务已经持有排他锁则直接返回 true。</li>
+<li>如果事务处在 Shrinking 阶段，直接中断事务并抛出异常。</li>
+</ol>
+<p>接下来调用 NeedWaitUpgrade 去尝试升级锁。如果升级成功，把该线程在等待队列中的 LockRequest 的 lock_mode_ 属性设置为排他锁，并将该等待队列的 upgrading_ 设置为 INVALID_TXN_ID，然后把排他锁放进 ExclusiveLockSet 中，将之前的共享锁从 SharedLockSet 中移除，并返回 true。</p>
+<h3 id="Unlock"><a href="#Unlock" class="headerlink" title="Unlock"></a>Unlock</h3><ol>
+<li>先判断事务有没有占用该元组的锁，如果没有直接返回。</li>
+<li>开始遍历等待队列，如果找到了自己，就将对应的 LockRequest 移除，并发起一次通知。</li>
+<li>如果没有找到直接返回 false。</li>
+<li>如果事务的隔离级别是 Repeatable Read，并且处于 Growing 阶段，那么事务此时进入 Shrinking 阶段。</li>
+<li>将锁从事务的 LockSet 中移除。</li>
+</ol>
+<h2 id="TASK-3-CONCURRENT-QUERY-EXECUTION"><a href="#TASK-3-CONCURRENT-QUERY-EXECUTION" class="headerlink" title="TASK #3 - CONCURRENT QUERY EXECUTION"></a>TASK #3 - CONCURRENT QUERY EXECUTION</h2><p>任务 3 要将我们实现的锁管理器应用起来，去修改以下 Executor：</p>
+<h3 id="SeqScanExecutor"><a href="#SeqScanExecutor" class="headerlink" title="SeqScanExecutor"></a>SeqScanExecutor</h3><p>在所确定访问的元组后，即遍历到了那个位置的时候（这个时候 rid 才能确定，函数参数是用作返回值的，遍历时还是空值）去获取共享锁。在将参数的值设置好后再将锁释放（<strong>Read Uncommitted、Read Committed</strong> 隔离级别下直接释放，如果是 <strong>Repeatable Read</strong> 则不需要自己编写代码）。</p>
+<h3 id="InsertExecutor"><a href="#InsertExecutor" class="headerlink" title="InsertExecutor"></a>InsertExecutor</h3><p>在所确定访问的元组后获取排他锁（如果已有排他锁就不需要获取，如果已有共享锁就进行升级，否则再获取排他锁）。更新完索引还要往 <strong>index_write_set_</strong> 中插入一条记录，注意 tuple 字段填的是插入表的那个元组。最后释放锁。</p>
+<h3 id="UpdateExecutor"><a href="#UpdateExecutor" class="headerlink" title="UpdateExecutor"></a>UpdateExecutor</h3><p>总体跟 InsertExecutor 类似，但是 UpdateExecutor 在将元组更新后，还需要插入一条记录到 <strong>table_write_set_</strong> 中，tuple 字段是更新前的元组。并且再往 <strong>index_write_set_</strong> 中插入记录时，还需要将记录的 old_tuple_ 字段也附上，即更新前的元组。最后释放锁。</p>
+<h3 id="DeleteExecutor"><a href="#DeleteExecutor" class="headerlink" title="DeleteExecutor"></a>DeleteExecutor</h3><p>跟 InsertExecutor 几乎完全一致。</p>
+<h2 id="Conclusion"><a href="#Conclusion" class="headerlink" title="Conclusion"></a>Conclusion</h2><p>四个项目终于都完成了，虽然 Project 4 实现起来没有 Project 2 这么困难，但是感觉理解的并没有那么清晰，还需要阅读更多的资料再结合项目代码好好读一遍，而且这次提交了连 leaderboard 都没有，还有很大的优化空间。 </p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">Home</a></li>
+        
+          <li><a href="/categories/">categories</a></li>
+        
+          <li><a href="/about/">About</a></li>
+        
+          <li><a href="/archives/">Writing</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/bigboss2063">Projects</a></li>
+        
+          <li><a href="/search/">Search</a></li>
+        
+      </ul>
+    </div>
+
+    <div id="toc-footer" style="display: none">
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#TASK-1-LOCK-MANAGER-AND-TASK-2-DEADLOCK-PREVENTION"><span class="toc-number">1.</span> <span class="toc-text">TASK #1 - LOCK MANAGER AND TASK #2 - DEADLOCK PREVENTION</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#NeedWait"><span class="toc-number">1.1.</span> <span class="toc-text">NeedWait</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#NeedWaitUpgrade"><span class="toc-number">1.2.</span> <span class="toc-text">NeedWaitUpgrade</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#LockShared"><span class="toc-number">1.3.</span> <span class="toc-text">LockShared</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#LockExclusive"><span class="toc-number">1.4.</span> <span class="toc-text">LockExclusive</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#LockUpgrade"><span class="toc-number">1.5.</span> <span class="toc-text">LockUpgrade</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Unlock"><span class="toc-number">1.6.</span> <span class="toc-text">Unlock</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#TASK-3-CONCURRENT-QUERY-EXECUTION"><span class="toc-number">2.</span> <span class="toc-text">TASK #3 - CONCURRENT QUERY EXECUTION</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#SeqScanExecutor"><span class="toc-number">2.1.</span> <span class="toc-text">SeqScanExecutor</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#InsertExecutor"><span class="toc-number">2.2.</span> <span class="toc-text">InsertExecutor</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#UpdateExecutor"><span class="toc-number">2.3.</span> <span class="toc-text">UpdateExecutor</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#DeleteExecutor"><span class="toc-number">2.4.</span> <span class="toc-text">DeleteExecutor</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Conclusion"><span class="toc-number">3.</span> <span class="toc-text">Conclusion</span></a></li></ol>
+    </div>
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://bigboss2063.github.io/post/12f55eb9.html"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://bigboss2063.github.io/post/12f55eb9.html&text=CMU 15-445 2021 Fall Project4 Concureency Control"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://bigboss2063.github.io/post/12f55eb9.html&title=CMU 15-445 2021 Fall Project4 Concureency Control"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://bigboss2063.github.io/post/12f55eb9.html&is_video=false&description=CMU 15-445 2021 Fall Project4 Concureency Control"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=CMU 15-445 2021 Fall Project4 Concureency Control&body=Check out this article: https://bigboss2063.github.io/post/12f55eb9.html"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://bigboss2063.github.io/post/12f55eb9.html&title=CMU 15-445 2021 Fall Project4 Concureency Control"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://bigboss2063.github.io/post/12f55eb9.html&title=CMU 15-445 2021 Fall Project4 Concureency Control"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://bigboss2063.github.io/post/12f55eb9.html&title=CMU 15-445 2021 Fall Project4 Concureency Control"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://bigboss2063.github.io/post/12f55eb9.html&title=CMU 15-445 2021 Fall Project4 Concureency Control"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://bigboss2063.github.io/post/12f55eb9.html&name=CMU 15-445 2021 Fall Project4 Concureency Control&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://bigboss2063.github.io/post/12f55eb9.html&t=CMU 15-445 2021 Fall Project4 Concureency Control"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> Menu</a>
+        <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> TOC</a>
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> Share</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> Top</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2023
+    bigboss2063
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/categories/">categories</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/bigboss2063">Projects</a></li><!--
+     --><!--
+       --><li><a href="/search/">Search</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"Copy to clipboard!\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "Copied!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>

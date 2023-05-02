@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang=en>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="项目 3 我们需要实现一些 Executor 来执行 Query Plan：  Sequential Scan Insert (Raw) Insert (Select) Update Delete Nested Loop Join Hash Join Aggregation Limit Distinct  我们会使用的 Iterator query processing model 来实现，即 V">
+<meta property="og:type" content="article">
+<meta property="og:title" content="CMU 15-445 2021 Fall Project3 Query Execution">
+<meta property="og:url" content="https://bigboss2063.github.io/post/be781c2c.html">
+<meta property="og:site_name" content="bigboss2063&#39;s blog">
+<meta property="og:description" content="项目 3 我们需要实现一些 Executor 来执行 Query Plan：  Sequential Scan Insert (Raw) Insert (Select) Update Delete Nested Loop Join Hash Join Aggregation Limit Distinct  我们会使用的 Iterator query processing model 来实现，即 V">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://cdn.nlark.com/yuque/0/2022/png/23042800/1665113369456-cdfb41ce-5da6-4fdd-8d23-a47593f584a8.png">
+<meta property="og:image" content="https://cdn.nlark.com/yuque/0/2022/png/23042800/1665113888897-2ea9728b-f9f2-4418-8d91-109eab0ca5db.png">
+<meta property="article:published_time" content="2022-10-07T03:59:38.000Z">
+<meta property="article:modified_time" content="2023-05-02T04:00:14.635Z">
+<meta property="article:author" content="bigboss2063">
+<meta property="article:tag" content="数据库">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://cdn.nlark.com/yuque/0/2022/png/23042800/1665113369456-cdfb41ce-5da6-4fdd-8d23-a47593f584a8.png">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>CMU 15-445 2021 Fall Project3 Query Execution</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="Top" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/categories/">categories</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/bigboss2063">Projects</a></li><!--
+     --><!--
+       --><li><a href="/search/">Search</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="Previous post" href="/post/12f55eb9.html"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="Next post" href="/post/ae72c972.html"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="Back to top" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="Share post" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">Previous post</span>
+      <span id="i-next" class="info" style="display:none;">Next post</span>
+      <span id="i-top" class="info" style="display:none;">Back to top</span>
+      <span id="i-share" class="info" style="display:none;">Share post</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://bigboss2063.github.io/post/be781c2c.html"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://bigboss2063.github.io/post/be781c2c.html&text=CMU 15-445 2021 Fall Project3 Query Execution"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://bigboss2063.github.io/post/be781c2c.html&title=CMU 15-445 2021 Fall Project3 Query Execution"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://bigboss2063.github.io/post/be781c2c.html&is_video=false&description=CMU 15-445 2021 Fall Project3 Query Execution"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=CMU 15-445 2021 Fall Project3 Query Execution&body=Check out this article: https://bigboss2063.github.io/post/be781c2c.html"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://bigboss2063.github.io/post/be781c2c.html&title=CMU 15-445 2021 Fall Project3 Query Execution"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://bigboss2063.github.io/post/be781c2c.html&title=CMU 15-445 2021 Fall Project3 Query Execution"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://bigboss2063.github.io/post/be781c2c.html&title=CMU 15-445 2021 Fall Project3 Query Execution"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://bigboss2063.github.io/post/be781c2c.html&title=CMU 15-445 2021 Fall Project3 Query Execution"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://bigboss2063.github.io/post/be781c2c.html&name=CMU 15-445 2021 Fall Project3 Query Execution&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://bigboss2063.github.io/post/be781c2c.html&t=CMU 15-445 2021 Fall Project3 Query Execution"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    <div id="toc">
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#TASK-1-EXECUTORS"><span class="toc-number">1.</span> <span class="toc-text">TASK #1 - EXECUTORS</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Sequential-Scan"><span class="toc-number">1.1.</span> <span class="toc-text">Sequential Scan</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Insert"><span class="toc-number">1.2.</span> <span class="toc-text">Insert</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Update"><span class="toc-number">1.3.</span> <span class="toc-text">Update</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Delete"><span class="toc-number">1.4.</span> <span class="toc-text">Delete</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Nested-Loop-Join"><span class="toc-number">1.5.</span> <span class="toc-text">Nested Loop Join</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Hash-Join"><span class="toc-number">1.6.</span> <span class="toc-text">Hash Join</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Aggregation"><span class="toc-number">1.7.</span> <span class="toc-text">Aggregation</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Limit"><span class="toc-number">1.8.</span> <span class="toc-text">Limit</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Distinct"><span class="toc-number">1.9.</span> <span class="toc-text">Distinct</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Conclusion"><span class="toc-number">2.</span> <span class="toc-text">Conclusion</span></a></li></ol>
+    </div>
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        CMU 15-445 2021 Fall Project3 Query Execution
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">bigboss2063</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2022-10-07T03:59:38.000Z" class="dt-published" itemprop="datePublished">2022-10-07</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/lab-%E6%96%87%E6%A1%A3/">lab 文档</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <p>项目 3 我们需要实现一些 <strong>Executor</strong> 来执行 <strong>Query Plan</strong>：</p>
+<ul>
+<li><strong>Sequential Scan</strong></li>
+<li><strong>Insert (Raw)</strong></li>
+<li><strong>Insert (Select)</strong></li>
+<li><strong>Update</strong></li>
+<li><strong>Delete</strong></li>
+<li><strong>Nested Loop Join</strong></li>
+<li><strong>Hash Join</strong></li>
+<li><strong>Aggregation</strong></li>
+<li><strong>Limit</strong></li>
+<li><strong>Distinct</strong></li>
+</ul>
+<p>我们会使用的 <strong>Iterator query processing model</strong> 来实现，即 <strong>Volcano</strong> 模型。在这个模型中每个 Executor 都实现了一个 Next 函数，每次执行 Next 函数时，Executor 要么返回一个元组要么返回一个表示没有更多元组的标志。</p>
+<p>项目说明书：<a target="_blank" rel="noopener" href="https://15445.courses.cs.cmu.edu/fall2021/project3/">https://15445.courses.cs.cmu.edu/fall2021/project3/</a></p>
+<h2 id="TASK-1-EXECUTORS"><a href="#TASK-1-EXECUTORS" class="headerlink" title="TASK #1 - EXECUTORS"></a>TASK #1 - EXECUTORS</h2><p>这是本项目的唯一一个任务，实现项目说明中指出的 Executor 即可。项目 3 相比于项目 2 的难度系数下降很多，一开始可能会由于 API 不熟悉导致无从下手，但实际上思路都是很简单的，<strong>在写每一个 Executor 之前，先把对应的 Plan 的源码看一下</strong>，碰到不懂的地方可以从测试文件看起，看如何手写一个查询计划，思路就会清晰很多。下文中会将常用的 API 简单的给出。</p>
+<p>而且本项目中有很多工具都是已经写好的，我们<strong>只需要实现 Next 函数和 Init 函数就可以了</strong>，所以通过 Autograder 后最好还是将整个代码全部都过一遍，可以理解的更加深入。</p>
+<h3 id="Sequential-Scan"><a href="#Sequential-Scan" class="headerlink" title="Sequential Scan"></a>Sequential Scan</h3><p>根据 Hint，可以知道需要借助 <strong>TableIterator</strong> 来遍历一张表，查看源码可以发现 <strong>TableHeap</strong> 类中有 <strong>Begin</strong> 和 <strong>End</strong> 函数可以获取对应的<strong>迭代器</strong>，<strong>所以我们可以在初始化的时候将 Executor 中迭代器设置为 Begin 的位置</strong>，接着在执行 Next 函数的时候遍历整张表即可。跟表或索引有关的信息都在 <strong>ExecutorContext</strong> 中。</p>
+<p>注意我们遍历时需要判断是否满足 Predicate 条件：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">while</span> (table_iterator_ != table_info_-&gt;table_-&gt;<span class="built_in">End</span>() &amp;&amp; plan_-&gt;<span class="built_in">GetPredicate</span>() != <span class="literal">nullptr</span> &amp;&amp;</span><br><span class="line">		!plan_-&gt;<span class="built_in">GetPredicate</span>()-&gt;<span class="built_in">Evaluate</span>(&amp;(*table_iterator_), plan_-&gt;<span class="built_in">OutputSchema</span>()).<span class="built_in">GetAs</span>&lt;<span class="type">bool</span>&gt;()) &#123;</span><br><span class="line">    table_iterator_++;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>当满足条件的时候，要根据执行计划的 OutputSchema 来生成元组：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">std::vector&lt;Value&gt; values;</span><br><span class="line"><span class="keyword">for</span> (<span class="type">const</span> <span class="keyword">auto</span> &amp;column : plan_-&gt;<span class="built_in">OutputSchema</span>()-&gt;<span class="built_in">GetColumns</span>()) &#123;</span><br><span class="line">	values.<span class="built_in">push_back</span>(column.<span class="built_in">GetExpr</span>()-&gt;<span class="built_in">Evaluate</span>(&amp;(*table_iterator_), &amp;table_info_-&gt;schema_));</span><br><span class="line">&#125;</span><br><span class="line">*tuple = <span class="built_in">Tuple</span>(values, plan_-&gt;<span class="built_in">OutputSchema</span>());</span><br></pre></td></tr></table></figure>
+
+<h3 id="Insert"><a href="#Insert" class="headerlink" title="Insert"></a>Insert</h3><p>这里需要实现两种 Insert：</p>
+<ol>
+<li><strong>RawInsert</strong></li>
+<li><strong>SelectInsert</strong></li>
+</ol>
+<p>在 Insert Plan 中有一个函数 IsRawInsert 用来判断是哪种 Insert，如果是 RawInsert 表明不需要执行 <strong>Chlid Executor</strong>，<strong>直接调用 TableHeap 的插入函数将查询计划中的数据插入到表中即可</strong>，而如果是 SelectInsert，那么就要<strong>先初始化</strong> <strong>Chlid Executor，再从 Chlid Exceutor 取出元组并插入。</strong></p>
+<p>在表中成功插入元组后，还需要在索引中插入一个 Index Tuple：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">auto</span> indexes = exec_ctx_-&gt;<span class="built_in">GetCatalog</span>()-&gt;<span class="built_in">GetTableIndexes</span>(table_info_-&gt;name_);</span><br><span class="line"><span class="keyword">for</span> (<span class="type">const</span> <span class="keyword">auto</span> &amp;index : indexes) &#123;</span><br><span class="line">	Tuple index_tuple = tuple-&gt;<span class="built_in">KeyFromTuple</span>(table_info_-&gt;schema_, index-&gt;key_schema_, index-&gt;index_-&gt;<span class="built_in">GetKeyAttrs</span>());</span><br><span class="line">	index-&gt;index_-&gt;<span class="built_in">InsertEntry</span>(index_tuple, *rid, exec_ctx_-&gt;<span class="built_in">GetTransaction</span>());</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>Insert 中有一个很大的坑，就是虽然测试文件中没有写Insert Executor 不能修改 result_set，而且测试文件中 insert_plan 中的 result_set 也是 nullptr，但是在 Autograder 中有几个测试的 insert_plan 中的 result_set 并不是 nullptr，这个时候就会出现错误。<strong>所以需要一次性将所有数据插入元组再直接返回一个 False 给 Exceutor Engine，避免将数据插入到 result_set 中。</strong></p>
+<h3 id="Update"><a href="#Update" class="headerlink" title="Update"></a>Update</h3><p><strong>Update Executor 必定会有 Chlid Executor</strong>，所以在初始化时也要将 <strong>Chlid Executor 初始化。</strong>每从 Chlid Executor 中拿出一个元组都调用 <strong>GenerateUpdatedTuple</strong> 函数来生成更新后的元组，再使用 TableHeap 的更新函数即可。<strong>如果更新成功，要将索引中更新前的元组删除，再插入更新后的元组，所以需要记录更新前的那个元组。</strong>Update Executor 同样也<strong>不能修改 result_set</strong>。</p>
+<h3 id="Delete"><a href="#Delete" class="headerlink" title="Delete"></a>Delete</h3><p>跟 Update Executor 非常类似，每从 Chlid Executor 中拿出一个元组都调用 TableHeap 的 <strong>MarkDelete</strong> 函数（真正的删除在事务提交时执行）。再将索引中对应的元组删除即可。</p>
+<h3 id="Nested-Loop-Join"><a href="#Nested-Loop-Join" class="headerlink" title="Nested Loop Join"></a>Nested Loop Join</h3><p><img src="https://cdn.nlark.com/yuque/0/2022/png/23042800/1665113369456-cdfb41ce-5da6-4fdd-8d23-a47593f584a8.png" alt="img"></p>
+<p>嵌套两个循环将外表的每一个元组分别跟内表中的每一个元组进行比较，如果满足条件就将其返回（我选择用一个 List 来存储结果，再依次返回）。</p>
+<p>判断是否满足 Join 条件的方式：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">plan_-&gt;<span class="built_in">Predicate</span>()-&gt;<span class="built_in">EvaluateJoin</span>(&amp;left_tuple, left_executor_-&gt;<span class="built_in">GetOutputSchema</span>(), right_tuple, right_executor_-&gt;<span class="built_in">GetOutputSchema</span>()).<span class="built_in">GetAs</span>&lt;<span class="type">bool</span>&gt;();</span><br></pre></td></tr></table></figure>
+
+<p>如果满足条件，组合 Tuple 的方式：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">std::vector&lt;Value&gt; values;</span><br><span class="line"><span class="keyword">for</span> (<span class="type">const</span> <span class="keyword">auto</span> &amp;columns : plan_-&gt;<span class="built_in">OutputSchema</span>()-&gt;<span class="built_in">GetColumns</span>()) &#123;</span><br><span class="line">	values.<span class="built_in">emplace_back</span>(columns.<span class="built_in">GetExpr</span>()-&gt;<span class="built_in">EvaluateJoin</span>(&amp;left_tuple, left_executor_-&gt;<span class="built_in">GetOutputSchema</span>(),&amp;right_tuple, right_executor_-&gt;<span class="built_in">GetOutputSchema</span>()));</span><br><span class="line">&#125;</span><br><span class="line">result_.<span class="built_in">emplace_back</span>(<span class="built_in">Tuple</span>(values, plan_-&gt;<span class="built_in">OutputSchema</span>()));</span><br></pre></td></tr></table></figure>
+
+<h3 id="Hash-Join"><a href="#Hash-Join" class="headerlink" title="Hash Join"></a>Hash Join</h3><p><img src="https://cdn.nlark.com/yuque/0/2022/png/23042800/1665113888897-2ea9728b-f9f2-4418-8d91-109eab0ca5db.png" alt="img"></p>
+<p>Hint 中让仿照 <strong>SimpleAggregationHashTable</strong> 实现一个 Hash Table，但是感觉好像没有什么必要，我使用了项目中提供的 HashUtil 加上一个 unordered_map 来完成。我们可以在<strong>初始化阶段</strong>将 HashTable 建立好。</p>
+<p>注意，Hint 中提到我们需要处理多个元组的 key 是一样的情况，所以 HashTable 的声明应该是：<code>std::unordered_map&lt;hash_t, std::vector&lt;Tuple&gt;&gt; hash_table_;</code>，将外表中所有 join key 相同的元组存储到一起，在 Probe 时将这些元组统一跟内表中对应的元组进行比较，如果满足条件则拼装起来放入 result 中，方法跟 nested loop join 一样。</p>
+<p>获取 join key 的方法：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">auto</span> left_join_key = left_expression-&gt;<span class="built_in">Evaluate</span>(&amp;tuple, left_child_-&gt;<span class="built_in">GetOutputSchema</span>());</span><br><span class="line"><span class="keyword">auto</span> hash_key = HashUtil::<span class="built_in">HashValue</span>(&amp;left_join_key);</span><br><span class="line">hash_table_[hash_key].<span class="built_in">emplace_back</span>(tuple);</span><br></pre></td></tr></table></figure>
+
+<h3 id="Aggregation"><a href="#Aggregation" class="headerlink" title="Aggregation"></a>Aggregation</h3><p>聚合的实现需要的东西很多，但是项目都已经给出来了，在写之前先看一下 SimpleAggregationHashTable 这个类。对于每一个元组，我们只需要调用 MakeAggregateKey、MakeAggregateValue 函数，生成 aggregate_key 和 aggregate_value 然后调用 InsertCombine 函数即可，这样聚合的结果就已经计算好了，存放在 SimpleAggregationHashTable 中，可以用它的迭代器对其中每一条结果进行操作。</p>
+<p>对于有 Having 语句的情况，使用类似的做法判断条件：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">plan_-&gt;<span class="built_in">GetHaving</span>()-&gt;<span class="built_in">EvaluateAggregate</span>(aht_iterator_.<span class="built_in">Key</span>().group_bys_, aht_iterator_.<span class="built_in">Val</span>().aggregates_).<span class="built_in">GetAs</span>&lt;<span class="type">bool</span>&gt;();</span><br></pre></td></tr></table></figure>
+
+<p>同样，生成元组的方式也是类似：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">std::vector&lt;Value&gt; values;</span><br><span class="line"><span class="keyword">for</span> (<span class="type">const</span> <span class="keyword">auto</span> &amp;column : plan_-&gt;<span class="built_in">OutputSchema</span>()-&gt;<span class="built_in">GetColumns</span>()) &#123;</span><br><span class="line">    values.<span class="built_in">emplace_back</span>(</span><br><span class="line">    column.<span class="built_in">GetExpr</span>()-&gt;<span class="built_in">EvaluateAggregate</span>(aht_iterator_.<span class="built_in">Key</span>().group_bys_, aht_iterator_.<span class="built_in">Val</span>().aggregates_));</span><br><span class="line">&#125;</span><br><span class="line">*tuple = <span class="built_in">Tuple</span>(values, plan_-&gt;<span class="built_in">OutputSchema</span>());</span><br></pre></td></tr></table></figure>
+
+<h3 id="Limit"><a href="#Limit" class="headerlink" title="Limit"></a>Limit</h3><p>Limit 就非常简单了，限制一下调用 Chlid_Executor 的次数就可以了。</p>
+<h3 id="Distinct"><a href="#Distinct" class="headerlink" title="Distinct"></a>Distinct</h3><p>跟 Hash Join 类似，这里也用到了 HashUtil 加上一个 unordered_map 来实现，但现在是为了去重，所以 HashTable 中存储的东西就跟刚刚不一样了，我们将 key 相同的元组的 values 存储在其中，方便进行比较：<code>std::unordered_map&lt;hash_t, std::vector&lt;std::vector&lt;Value&gt;&gt;&gt; distinct_map_&#123;&#125;;</code>。当从 Chlid Executor 中取出一个元组后，用 HashTable 进行去重即可，如果不是重复的就将其放入 result 中，最后依次返回。</p>
+<h2 id="Conclusion"><a href="#Conclusion" class="headerlink" title="Conclusion"></a>Conclusion</h2><p>在开始写 Query Execution 之前本来觉得应该非常的费时费脑，但是项目中大部分东西都已经给出，大大降低了难度。但是在自己查看 API 的过程中，发现依旧对这一块内容的理解变深了不少。在降低难度的同时还能加深理解，感谢 Andy。最后 leaderboard 还是不意外的在 100 名开外。</p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">Home</a></li>
+        
+          <li><a href="/categories/">categories</a></li>
+        
+          <li><a href="/about/">About</a></li>
+        
+          <li><a href="/archives/">Writing</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/bigboss2063">Projects</a></li>
+        
+          <li><a href="/search/">Search</a></li>
+        
+      </ul>
+    </div>
+
+    <div id="toc-footer" style="display: none">
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#TASK-1-EXECUTORS"><span class="toc-number">1.</span> <span class="toc-text">TASK #1 - EXECUTORS</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Sequential-Scan"><span class="toc-number">1.1.</span> <span class="toc-text">Sequential Scan</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Insert"><span class="toc-number">1.2.</span> <span class="toc-text">Insert</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Update"><span class="toc-number">1.3.</span> <span class="toc-text">Update</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Delete"><span class="toc-number">1.4.</span> <span class="toc-text">Delete</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Nested-Loop-Join"><span class="toc-number">1.5.</span> <span class="toc-text">Nested Loop Join</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Hash-Join"><span class="toc-number">1.6.</span> <span class="toc-text">Hash Join</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Aggregation"><span class="toc-number">1.7.</span> <span class="toc-text">Aggregation</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Limit"><span class="toc-number">1.8.</span> <span class="toc-text">Limit</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Distinct"><span class="toc-number">1.9.</span> <span class="toc-text">Distinct</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Conclusion"><span class="toc-number">2.</span> <span class="toc-text">Conclusion</span></a></li></ol>
+    </div>
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://bigboss2063.github.io/post/be781c2c.html"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://bigboss2063.github.io/post/be781c2c.html&text=CMU 15-445 2021 Fall Project3 Query Execution"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://bigboss2063.github.io/post/be781c2c.html&title=CMU 15-445 2021 Fall Project3 Query Execution"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://bigboss2063.github.io/post/be781c2c.html&is_video=false&description=CMU 15-445 2021 Fall Project3 Query Execution"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=CMU 15-445 2021 Fall Project3 Query Execution&body=Check out this article: https://bigboss2063.github.io/post/be781c2c.html"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://bigboss2063.github.io/post/be781c2c.html&title=CMU 15-445 2021 Fall Project3 Query Execution"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://bigboss2063.github.io/post/be781c2c.html&title=CMU 15-445 2021 Fall Project3 Query Execution"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://bigboss2063.github.io/post/be781c2c.html&title=CMU 15-445 2021 Fall Project3 Query Execution"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://bigboss2063.github.io/post/be781c2c.html&title=CMU 15-445 2021 Fall Project3 Query Execution"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://bigboss2063.github.io/post/be781c2c.html&name=CMU 15-445 2021 Fall Project3 Query Execution&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://bigboss2063.github.io/post/be781c2c.html&t=CMU 15-445 2021 Fall Project3 Query Execution"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> Menu</a>
+        <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> TOC</a>
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> Share</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> Top</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2023
+    bigboss2063
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/categories/">categories</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/bigboss2063">Projects</a></li><!--
+     --><!--
+       --><li><a href="/search/">Search</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"Copy to clipboard!\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "Copied!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>
