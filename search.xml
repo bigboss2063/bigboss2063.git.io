@@ -446,5 +446,16 @@
     </entry>
     
     
+    
+    <entry>
+      <title>talks</title>
+      <link href="/talks/index.html"/>
+      <url>/talks/index.html</url>
+      
+        <content type="html"><![CDATA[<blockquote><p>今天把 DDIA 读到了第五章，感觉分布式领域需要考虑的问题真是多到夸张，这还是只考虑复制中会发生的问题，后面还有分片、事务（虽然事务是用来提供更强有力的保证，但是势必会引入新的问题）。提出分布式共识算法的人真是太厉害了，令人感叹。</p><p align="right">2023年5月2日22:16:30</p></blockquote><hr>]]></content>
+      
+    </entry>
+    
+    
   
 </search>
