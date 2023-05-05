@@ -4,6 +4,31 @@
   
     
     <entry>
+      <title>DDIA：分布式系统的麻烦</title>
+      <link href="/post/349aae9a.html"/>
+      <url>/post/349aae9a.html</url>
+      
+        <content type="html"><![CDATA[<p>在分布式系统中会发生的错误和处理错误的方式跟在单机上有本质的区别：</p><blockquote><p>装有良好软件的个人计算机通常要么功能完好，要么完全失效，而不是介于两者之间。</p></blockquote><p>而在分布式系统中，系统的部分可能在正常运行，但也有一部分会以某种<strong>不可预知</strong>的方式被破坏，这被称作部分失效（partial failure）。而难点也正是在于部分失效是 <strong>不确定性的（nondeterministic）</strong>。</p><p>在这一章中，讨论了分布式系统中可能发生的一些问题：</p><ul><li>网络数据包可能会丢失或延迟；</li><li>节点的时钟可能与其他节点的时钟不同步；</li><li>一个进程可能由于一些原因被暂停，而恢复的时候进程并不会意识到自己被暂停过了。</li></ul><p>这类问题都是部分失效的问题，所以分布式系统需要<strong>在软件层面建立对部分失效的容错机制</strong>，这样整个系统在部分失效的情况下也可以正常运行。</p><p>为了容忍错误，首先需要检测它们。大部分分布式算法都是通过<strong>超时</strong>来确定远程节点是否可用。但是超时检测并不能判断出节点到底是出现故障了还是由于网络环境的波动而导致响应消息延迟。</p><p>由于分布式系统节点之间通信的唯一方式是通过网络发送数据包，所以在分布式系统中不能依赖于单一节点做出判断，通常都是需要<strong>法定人数</strong>达成一致。</p><p>所以分布式系统的实现是非常困难的，对于一般的（能够在单机上就能处理的问题），把系统放在一台机器上是一种更加合理的选择。但需要获取容错和低延迟时，就不得不使用分布式系统了。</p><p>在分布式系统重出现的网络、时钟或进程的问题，可以通过昂贵的代价来解决。如果不是安全关键的系统，如航天、金融相关的，那么<strong>便宜而不安全</strong>的组件是一种更好的选择（我们的目的就是<strong>从不可靠的组件构建可靠的系统</strong>）。否则才去选择昂贵而安全的组件。</p><p>研究人员提出了很多共识算法，这些共识算法可以达到容忍分布式系统中出现的问题的目的。当然算法在理论上也许可以证明正确（一个系统模型中的算法总是满足它在所有我们假设可能发生的情况下的性质，那么这个算法是正确的），但是在现实中，总是有一些错误潜伏在系统中，会打破提出的假设。所以经验测试同样很重要。</p>]]></content>
+      
+      
+      <categories>
+          
+          <category> DDIA </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> 阅读笔记 </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
       <title>DDIA：事务</title>
       <link href="/post/9058578b.html"/>
       <url>/post/9058578b.html</url>
@@ -510,7 +535,7 @@
       <link href="/talks/index.html"/>
       <url>/talks/index.html</url>
       
-        <content type="html"><![CDATA[<blockquote><p>今天把 DDIA 读到了第五章，感觉分布式领域需要考虑的问题真是多到夸张，这还是只考虑复制中会发生的问题，后面还有分片、事务（虽然事务是用来提供更强有力的保证，但是势必会引入新的问题）。提出分布式共识算法的人真是太厉害了，令人感叹。</p><div align="right">2023年5月2日22:16:30</div></blockquote><hr><blockquote><p>读了 DDIA 的第六章、第七章。在有 MIT 6.824和 TinyKV 的基础上理解分区相关内容还是比较容易的。感觉 DDIA 最好的地方还是能把碎片化的知识给串起来，个人感觉倒是没有哪么适合入门的读者？</p><div align="right">2023年5月4日20:24:50</div></blockquote>]]></content>
+        <content type="html"><![CDATA[<blockquote><p>今天把 DDIA 读到了第五章，感觉分布式领域需要考虑的问题真是多到夸张，这还是只考虑复制中会发生的问题，后面还有分片、事务（虽然事务是用来提供更强有力的保证，但是势必会引入新的问题）。提出分布式共识算法的人真是太厉害了，令人感叹。</p><div align="right">2023年5月2日22:16:30</div></blockquote><hr><blockquote><p>读了 DDIA 的第六章、第七章。在有 MIT 6.824和 TinyKV 的基础上理解分区相关内容还是比较容易的。感觉 DDIA 最好的地方还是能把碎片化的知识给串起来，个人感觉倒是没有哪么适合入门的读者？</p><div align="right">2023年5月4日20:24:50</div></blockquote><hr><blockquote><p>Life is a fucking process of trade off just like distributed system.</p><div align="right">2023年5月5日16:59:08</div></blockquote>]]></content>
       
     </entry>
     
