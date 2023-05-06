@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang=en>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="Unix 哲学：  让每个程序都做好一件事。要做一件新的工作，写一个新程序，而不是通过添加 “功能” 让老程序复杂化。 期待每个程序的输出成为另一个程序的输入。不要将无关信息混入输出。避免使用严格的列数据或二进制输入格式。不要坚持交互式输入。 设计和构建软件时，即使是操作系统，也让它们能够尽早地被试用，最好在几周内完成。不要犹豫，扔掉笨拙的部分，重建它们。 优先使用工具来减轻编程任务，即使必须曲">
+<meta property="og:type" content="article">
+<meta property="og:title" content="DDIA：批处理">
+<meta property="og:url" content="https://bigboss2063.github.io/post/a8095396.html">
+<meta property="og:site_name" content="bigboss2063&#39;s blog">
+<meta property="og:description" content="Unix 哲学：  让每个程序都做好一件事。要做一件新的工作，写一个新程序，而不是通过添加 “功能” 让老程序复杂化。 期待每个程序的输出成为另一个程序的输入。不要将无关信息混入输出。避免使用严格的列数据或二进制输入格式。不要坚持交互式输入。 设计和构建软件时，即使是操作系统，也让它们能够尽早地被试用，最好在几周内完成。不要犹豫，扔掉笨拙的部分，重建它们。 优先使用工具来减轻编程任务，即使必须曲">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2023-05-06T12:01:51.000Z">
+<meta property="article:modified_time" content="2023-05-06T12:46:28.432Z">
+<meta property="article:author" content="bigboss2063">
+<meta property="article:tag" content="阅读笔记">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>DDIA：批处理</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="Top" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a href="/categories/">categories</a></li><!--
+     --><!--
+       --><li><a href="/tags/">tags</a></li><!--
+     --><!--
+       --><li><a href="/talks/">talks</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/search/">Search</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        
+        <li><a class="icon" aria-label="Next post" href="/post/6b17822.html"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="Back to top" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="Share post" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">Previous post</span>
+      <span id="i-next" class="info" style="display:none;">Next post</span>
+      <span id="i-top" class="info" style="display:none;">Back to top</span>
+      <span id="i-share" class="info" style="display:none;">Share post</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://bigboss2063.github.io/post/a8095396.html"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://bigboss2063.github.io/post/a8095396.html&text=DDIA：批处理"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://bigboss2063.github.io/post/a8095396.html&title=DDIA：批处理"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://bigboss2063.github.io/post/a8095396.html&is_video=false&description=DDIA：批处理"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=DDIA：批处理&body=Check out this article: https://bigboss2063.github.io/post/a8095396.html"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://bigboss2063.github.io/post/a8095396.html&title=DDIA：批处理"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://bigboss2063.github.io/post/a8095396.html&title=DDIA：批处理"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://bigboss2063.github.io/post/a8095396.html&title=DDIA：批处理"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://bigboss2063.github.io/post/a8095396.html&title=DDIA：批处理"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://bigboss2063.github.io/post/a8095396.html&name=DDIA：批处理&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://bigboss2063.github.io/post/a8095396.html&t=DDIA：批处理"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    <div id="toc">
+      
+    </div>
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        DDIA：批处理
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">bigboss2063</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2023-05-06T12:01:51.000Z" class="dt-published" itemprop="datePublished">2023-05-06</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/DDIA/">DDIA</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/%E9%98%85%E8%AF%BB%E7%AC%94%E8%AE%B0/" rel="tag">阅读笔记</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <blockquote>
+<p>Unix 哲学：</p>
+<ol>
+<li>让每个程序都<strong>做好一件事</strong>。要做一件新的工作，写一个新程序，而不是通过添加 “功能” 让老程序复杂化。</li>
+<li>期待每个程序的输出成为另一个程序的输入。不要将无关信息混入输出。避免使用严格的列数据或二进制输入格式。不要坚持交互式输入。</li>
+<li>设计和构建软件时，即使是操作系统，也让它们能够尽早地被试用，最好在几周内完成。不要犹豫，扔掉笨拙的部分，重建它们。</li>
+<li>优先使用工具来减轻编程任务，即使必须曲线救国编写工具，且在用完后很可能要扔掉大部分。</li>
+</ol>
+</blockquote>
+<p>在 Unix 中，可以通过文件描述符和管道来将程序与程序组合起来。将这个思想过渡到 MapReduce 中，将 Mapper 和 Reducer 组合起来的接口是分布式文件系统。</p>
+<p>分布式批处理框架需要解决两个问题：</p>
+<ol>
+<li><strong>分区：</strong>在 MapReduce 中，Mapper 负责接受输入的文件块，讲这些文件块进行分区、排序并合并到可配置数量的 Reducer 中。即把相关数据（可能是键相同）都放在同一个地方（同一个 Reducer 那里）。但是排序是一个代价昂贵的操作，所以在后 MapReduce 时代，数据流处理引擎都会减少非必要的排序。</li>
+<li><strong>容错：</strong>MapReduce 会在一个任务完成后进行写盘，这使得单个任务的恢复很轻松，但是写盘的开销是很大的，这使得在无故障的情况下执行速度会减慢。并且 MapReduce 执行过程中可能出错的概率也不会很大，所以这个开销也许是不值得的，这与设计 MapReduce 时候 Google 的实际需求有关。后 MapReduce 时代的数据流引擎则会将中间状态保存在内存中，减少物化中间状态（写盘）。但这样如果节点发生故障，可能需要从故障节点开始将后面的算子全部计算一遍。如果算子是确定的，就可以减少重算的数据量。</li>
+</ol>
+<p>MapReduce 的几种连接算法：</p>
+<ul>
+<li><strong>排序合并连接：</strong>Mapper 根据连接键将参与连接的输入进行分区、排序和合并，将相同键的所有记录都传递给同一个 Reducer；</li>
+<li>广播散列连接：两个连接输入之一很小，<strong>小到它的散列表可以完全放进内存</strong>，那么它不需要分区，而是给连接输入大端的每个分区启动一个 Mapper，将小端散列表加载到每个 Mapper 中，利用这个散列表跟大端进行连接。</li>
+<li><strong>分区散列连接：</strong>如果两个连接输入按照同样的方式分区，即使用<strong>同样的散列函数、同样的连接键、同样的分区数量</strong>，那么可以独立地对每个分区应用散列表方法。</li>
+</ul>
+<p>其中大多数连接方法也在 <strong>MPP （大规模并行处理）数据库和数据流引擎</strong>内部使用。</p>
+<p>本章中主要介绍的分布式批处理框架是 <strong>Hadoop</strong>。</p>
+<blockquote>
+<p>正如我们所看到的，Hadoop 有点像 Unix 的分布式版本，其中 HDFS 是文件系统，而 MapReduce 是 Unix 进程的怪异实现（总是在 Map 阶段和 Reduce 阶段运行 <code>sort</code> 工具）。</p>
+</blockquote>
+<p>Hadoop 和分布式数据库的不同点在于：</p>
+<ul>
+<li>Hadoop  <strong>存储具有多样性：</strong>不需要根据 schema 来存储数据，直接将数据不加以区分（原始形式）的转储到分布式文件系统（HDFS）中。可以加快数据收集速度，并且让数据消费者来解释数据，增加灵活性；</li>
+<li>Hadoop <strong>处理模型具有多样性：</strong>使用分布式批处理框架可以轻松的在大型数据集上<strong>运行自己的代码</strong>；</li>
+<li>Hadoop <strong>针对频繁故障设计：</strong>MapReduce 被设计为以单个粒度重试任务，当发生失败的概率足够高的时候，这是一种合理的权衡，可以避免将整个作业重试。</li>
+</ul>
+<blockquote>
+<p>ps：文中好像把 MapReduce 和 Hadoop 等价了？</p>
+</blockquote>
+<p>由于 MapReduce 虽然很好懂，但是直接使用比较困难。并且 MapReduce 存在一些性能问题（比如过多的物化中间状态、过多的排序），几种用于分布式批处理的数据流引擎应运而生，它们有以下优点：</p>
+<ul>
+<li>减少排序等昂贵操作；</li>
+<li>减少不必要的 Mapper。实际上没有严格定义的 Mapper 和 Reducer 了，只有<strong>算子</strong>；</li>
+<li>工作流中的连接和数据依赖都是显示声明的，调度程序可以利用<strong>局部性</strong>进行优化；</li>
+<li><strong>算子间的中间状态不保存到 HDFS 中，而是保存到节点的内存或磁盘上</strong>（不放到分布式文件系统中可以减少复制的开销）。但是可能会使得任务执行失败时候的重新计算量变大；</li>
+<li>MapReduce 没开启一个任务都启动一个 JVM，而现在 <strong>JVM 可以重用，减少启动开销</strong>。</li>
+</ul>
+<p>数据流引擎中也引入了图模型，可以在整个图上执行某种离线处理或分析。但由于图算法通常有很多跨机器通信的额外开销，所以会明显拖慢分布式图算法。当图可以放进一台机器的内存（或者甚至能放进磁盘就行），在单机（甚至单线程）上执行图算法的性能也可能大于分布式批处理。只有当单机的内存（磁盘）放不下图的时候，使用分布式方法就不可避免了。</p>
+<p>批处理作业的显著特点是<strong>输出从输入衍生</strong>，并且<strong>输入数据是有界的</strong>，所以批处理作业最终都会完成。而流处理的输入是无界的，作业可能会永远持续下去。</p>
+
+  </div>
+</article>
+
+
+    <div class="blog-post-comments">
+        <div id="utterances_thread">
+            <noscript>Please enable JavaScript to view the comments.</noscript>
+        </div>
+    </div>
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">Home</a></li>
+        
+          <li><a href="/archives/">Writing</a></li>
+        
+          <li><a href="/categories/">categories</a></li>
+        
+          <li><a href="/tags/">tags</a></li>
+        
+          <li><a href="/talks/">talks</a></li>
+        
+          <li><a href="/about/">About</a></li>
+        
+          <li><a href="/search/">Search</a></li>
+        
+      </ul>
+    </div>
+
+    <div id="toc-footer" style="display: none">
+      
+    </div>
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://bigboss2063.github.io/post/a8095396.html"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://bigboss2063.github.io/post/a8095396.html&text=DDIA：批处理"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://bigboss2063.github.io/post/a8095396.html&title=DDIA：批处理"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://bigboss2063.github.io/post/a8095396.html&is_video=false&description=DDIA：批处理"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=DDIA：批处理&body=Check out this article: https://bigboss2063.github.io/post/a8095396.html"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://bigboss2063.github.io/post/a8095396.html&title=DDIA：批处理"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://bigboss2063.github.io/post/a8095396.html&title=DDIA：批处理"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://bigboss2063.github.io/post/a8095396.html&title=DDIA：批处理"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://bigboss2063.github.io/post/a8095396.html&title=DDIA：批处理"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://bigboss2063.github.io/post/a8095396.html&name=DDIA：批处理&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://bigboss2063.github.io/post/a8095396.html&t=DDIA：批处理"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> Menu</a>
+        <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> TOC</a>
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> Share</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> Top</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2023
+    bigboss2063
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a href="/categories/">categories</a></li><!--
+     --><!--
+       --><li><a href="/tags/">tags</a></li><!--
+     --><!--
+       --><li><a href="/talks/">talks</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/search/">Search</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"Copy to clipboard!\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "Copied!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+    <script type="text/javascript">
+      var utterances_repo = 'bigboss2063/blog-comments';
+      var utterances_issue_term = 'title';
+      var utterances_label = 'Comment';
+      var utterances_theme = 'github-dark';
+
+      (function(){
+          var script = document.createElement('script');
+
+          script.src = 'https://utteranc.es/client.js';
+          script.setAttribute('repo', utterances_repo);
+          script.setAttribute('issue-term', 'pathname');
+          script.setAttribute('label', utterances_label);
+          script.setAttribute('theme', utterances_theme);
+          script.setAttribute('crossorigin', 'anonymous');
+          script.async = true;
+          (document.getElementById('utterances_thread')).appendChild(script);
+      }());
+  </script>
+
+</body>
+</html>

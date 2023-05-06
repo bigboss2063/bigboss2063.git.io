@@ -4,6 +4,31 @@
   
     
     <entry>
+      <title>DDIA：批处理</title>
+      <link href="/post/a8095396.html"/>
+      <url>/post/a8095396.html</url>
+      
+        <content type="html"><![CDATA[<blockquote><p>Unix 哲学：</p><ol><li>让每个程序都<strong>做好一件事</strong>。要做一件新的工作，写一个新程序，而不是通过添加 “功能” 让老程序复杂化。</li><li>期待每个程序的输出成为另一个程序的输入。不要将无关信息混入输出。避免使用严格的列数据或二进制输入格式。不要坚持交互式输入。</li><li>设计和构建软件时，即使是操作系统，也让它们能够尽早地被试用，最好在几周内完成。不要犹豫，扔掉笨拙的部分，重建它们。</li><li>优先使用工具来减轻编程任务，即使必须曲线救国编写工具，且在用完后很可能要扔掉大部分。</li></ol></blockquote><p>在 Unix 中，可以通过文件描述符和管道来将程序与程序组合起来。将这个思想过渡到 MapReduce 中，将 Mapper 和 Reducer 组合起来的接口是分布式文件系统。</p><p>分布式批处理框架需要解决两个问题：</p><ol><li><strong>分区：</strong>在 MapReduce 中，Mapper 负责接受输入的文件块，讲这些文件块进行分区、排序并合并到可配置数量的 Reducer 中。即把相关数据（可能是键相同）都放在同一个地方（同一个 Reducer 那里）。但是排序是一个代价昂贵的操作，所以在后 MapReduce 时代，数据流处理引擎都会减少非必要的排序。</li><li><strong>容错：</strong>MapReduce 会在一个任务完成后进行写盘，这使得单个任务的恢复很轻松，但是写盘的开销是很大的，这使得在无故障的情况下执行速度会减慢。并且 MapReduce 执行过程中可能出错的概率也不会很大，所以这个开销也许是不值得的，这与设计 MapReduce 时候 Google 的实际需求有关。后 MapReduce 时代的数据流引擎则会将中间状态保存在内存中，减少物化中间状态（写盘）。但这样如果节点发生故障，可能需要从故障节点开始将后面的算子全部计算一遍。如果算子是确定的，就可以减少重算的数据量。</li></ol><p>MapReduce 的几种连接算法：</p><ul><li><strong>排序合并连接：</strong>Mapper 根据连接键将参与连接的输入进行分区、排序和合并，将相同键的所有记录都传递给同一个 Reducer；</li><li>广播散列连接：两个连接输入之一很小，<strong>小到它的散列表可以完全放进内存</strong>，那么它不需要分区，而是给连接输入大端的每个分区启动一个 Mapper，将小端散列表加载到每个 Mapper 中，利用这个散列表跟大端进行连接。</li><li><strong>分区散列连接：</strong>如果两个连接输入按照同样的方式分区，即使用<strong>同样的散列函数、同样的连接键、同样的分区数量</strong>，那么可以独立地对每个分区应用散列表方法。</li></ul><p>其中大多数连接方法也在 <strong>MPP （大规模并行处理）数据库和数据流引擎</strong>内部使用。</p><p>本章中主要介绍的分布式批处理框架是 <strong>Hadoop</strong>。</p><blockquote><p>正如我们所看到的，Hadoop 有点像 Unix 的分布式版本，其中 HDFS 是文件系统，而 MapReduce 是 Unix 进程的怪异实现（总是在 Map 阶段和 Reduce 阶段运行 <code>sort</code> 工具）。</p></blockquote><p>Hadoop 和分布式数据库的不同点在于：</p><ul><li>Hadoop  <strong>存储具有多样性：</strong>不需要根据 schema 来存储数据，直接将数据不加以区分（原始形式）的转储到分布式文件系统（HDFS）中。可以加快数据收集速度，并且让数据消费者来解释数据，增加灵活性；</li><li>Hadoop <strong>处理模型具有多样性：</strong>使用分布式批处理框架可以轻松的在大型数据集上<strong>运行自己的代码</strong>；</li><li>Hadoop <strong>针对频繁故障设计：</strong>MapReduce 被设计为以单个粒度重试任务，当发生失败的概率足够高的时候，这是一种合理的权衡，可以避免将整个作业重试。</li></ul><blockquote><p>ps：文中好像把 MapReduce 和 Hadoop 等价了？</p></blockquote><p>由于 MapReduce 虽然很好懂，但是直接使用比较困难。并且 MapReduce 存在一些性能问题（比如过多的物化中间状态、过多的排序），几种用于分布式批处理的数据流引擎应运而生，它们有以下优点：</p><ul><li>减少排序等昂贵操作；</li><li>减少不必要的 Mapper。实际上没有严格定义的 Mapper 和 Reducer 了，只有<strong>算子</strong>；</li><li>工作流中的连接和数据依赖都是显示声明的，调度程序可以利用<strong>局部性</strong>进行优化；</li><li><strong>算子间的中间状态不保存到 HDFS 中，而是保存到节点的内存或磁盘上</strong>（不放到分布式文件系统中可以减少复制的开销）。但是可能会使得任务执行失败时候的重新计算量变大；</li><li>MapReduce 没开启一个任务都启动一个 JVM，而现在 <strong>JVM 可以重用，减少启动开销</strong>。</li></ul><p>数据流引擎中也引入了图模型，可以在整个图上执行某种离线处理或分析。但由于图算法通常有很多跨机器通信的额外开销，所以会明显拖慢分布式图算法。当图可以放进一台机器的内存（或者甚至能放进磁盘就行），在单机（甚至单线程）上执行图算法的性能也可能大于分布式批处理。只有当单机的内存（磁盘）放不下图的时候，使用分布式方法就不可避免了。</p><p>批处理作业的显著特点是<strong>输出从输入衍生</strong>，并且<strong>输入数据是有界的</strong>，所以批处理作业最终都会完成。而流处理的输入是无界的，作业可能会永远持续下去。</p>]]></content>
+      
+      
+      <categories>
+          
+          <category> DDIA </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> 阅读笔记 </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
       <title>DDIA：一致性与共识</title>
       <link href="/post/6b17822.html"/>
       <url>/post/6b17822.html</url>
@@ -560,7 +585,7 @@
       <link href="/talks/index.html"/>
       <url>/talks/index.html</url>
       
-        <content type="html"><![CDATA[<blockquote><p>今天把 DDIA 读到了第五章，感觉分布式领域需要考虑的问题真是多到夸张，这还是只考虑复制中会发生的问题，后面还有分片、事务（虽然事务是用来提供更强有力的保证，但是势必会引入新的问题）。提出分布式共识算法的人真是太厉害了，令人感叹。</p><div align="right">2023年5月2日22:16:30</div></blockquote><hr><blockquote><p>读了 DDIA 的第六章、第七章。在有 MIT 6.824和 TinyKV 的基础上理解分区相关内容还是比较容易的。感觉 DDIA 最好的地方还是能把碎片化的知识给串起来，个人感觉倒是没有哪么适合入门的读者？</p><div align="right">2023年5月4日20:24:50</div></blockquote><hr><blockquote><p>Life is a fucking process of trade off just like distributed system.</p><div align="right">2023年5月5日16:59:08</div></blockquote>]]></content>
+        <content type="html"><![CDATA[<blockquote><p>今天把 DDIA 读到了第五章，感觉分布式领域需要考虑的问题真是多到夸张，这还是只考虑复制中会发生的问题，后面还有分片、事务（虽然事务是用来提供更强有力的保证，但是势必会引入新的问题）。提出分布式共识算法的人真是太厉害了，令人感叹。</p><div align="right">2023年5月2日22:16:30</div></blockquote><hr><blockquote><p>读了 DDIA 的第六章、第七章。在有 MIT 6.824和 TinyKV 的基础上理解分区相关内容还是比较容易的。感觉 DDIA 最好的地方还是能把碎片化的知识给串起来，个人感觉倒是没有哪么适合入门的读者？</p><div align="right">2023年5月4日20:24:50</div></blockquote><hr><blockquote><p>Life is a fucking process of trade off just like distributed system.</p><div align="right">2023年5月5日16:59:08</div></blockquote><hr><blockquote><p>看到 DDIA 第十章，主要是围绕 MapReduce 来讲的，跟 MIT 6.824 里讲了更多细节（或者是过了一年我已经不记得那边是怎么讲的了），一会把 lab1 的代码翻出来看一眼。</p><p>TinyKV 的代码也得结合 DDIA 第二部分的内容再好好过一遍。</p><div align = "right">2023年5月6日21:01:29</div></blockquote>]]></content>
       
     </entry>
     
