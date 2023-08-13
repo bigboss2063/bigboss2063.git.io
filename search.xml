@@ -4,23 +4,25 @@
   
     
     <entry>
-      <title>DDIA：批处理</title>
-      <link href="/post/a8095396.html"/>
-      <url>/post/a8095396.html</url>
+      <title>为 nutsdb 添加文件锁的过程记录及 gofrs/flock 详解</title>
+      <link href="/post/e2e532c8.html"/>
+      <url>/post/e2e532c8.html</url>
       
-        <content type="html"><![CDATA[<blockquote><p>Unix 哲学：</p><ol><li>让每个程序都<strong>做好一件事</strong>。要做一件新的工作，写一个新程序，而不是通过添加 “功能” 让老程序复杂化。</li><li>期待每个程序的输出成为另一个程序的输入。不要将无关信息混入输出。避免使用严格的列数据或二进制输入格式。不要坚持交互式输入。</li><li>设计和构建软件时，即使是操作系统，也让它们能够尽早地被试用，最好在几周内完成。不要犹豫，扔掉笨拙的部分，重建它们。</li><li>优先使用工具来减轻编程任务，即使必须曲线救国编写工具，且在用完后很可能要扔掉大部分。</li></ol></blockquote><p>在 Unix 中，可以通过文件描述符和管道来将程序与程序组合起来。将这个思想过渡到 MapReduce 中，将 Mapper 和 Reducer 组合起来的接口是分布式文件系统。</p><p>分布式批处理框架需要解决两个问题：</p><ol><li><strong>分区：</strong>在 MapReduce 中，Mapper 负责接受输入的文件块，讲这些文件块进行分区、排序并合并到可配置数量的 Reducer 中。即把相关数据（可能是键相同）都放在同一个地方（同一个 Reducer 那里）。但是排序是一个代价昂贵的操作，所以在后 MapReduce 时代，数据流处理引擎都会减少非必要的排序。</li><li><strong>容错：</strong>MapReduce 会在一个任务完成后进行写盘，这使得单个任务的恢复很轻松，但是写盘的开销是很大的，这使得在无故障的情况下执行速度会减慢。并且 MapReduce 执行过程中可能出错的概率也不会很大，所以这个开销也许是不值得的，这与设计 MapReduce 时候 Google 的实际需求有关。后 MapReduce 时代的数据流引擎则会将中间状态保存在内存中，减少物化中间状态（写盘）。但这样如果节点发生故障，可能需要从故障节点开始将后面的算子全部计算一遍。如果算子是确定的，就可以减少重算的数据量。</li></ol><p>MapReduce 的几种连接算法：</p><ul><li><strong>排序合并连接：</strong>Mapper 根据连接键将参与连接的输入进行分区、排序和合并，将相同键的所有记录都传递给同一个 Reducer；</li><li>广播散列连接：两个连接输入之一很小，<strong>小到它的散列表可以完全放进内存</strong>，那么它不需要分区，而是给连接输入大端的每个分区启动一个 Mapper，将小端散列表加载到每个 Mapper 中，利用这个散列表跟大端进行连接。</li><li><strong>分区散列连接：</strong>如果两个连接输入按照同样的方式分区，即使用<strong>同样的散列函数、同样的连接键、同样的分区数量</strong>，那么可以独立地对每个分区应用散列表方法。</li></ul><p>其中大多数连接方法也在 <strong>MPP （大规模并行处理）数据库和数据流引擎</strong>内部使用。</p><p>本章中主要介绍的分布式批处理框架是 <strong>Hadoop</strong>。</p><blockquote><p>正如我们所看到的，Hadoop 有点像 Unix 的分布式版本，其中 HDFS 是文件系统，而 MapReduce 是 Unix 进程的怪异实现（总是在 Map 阶段和 Reduce 阶段运行 <code>sort</code> 工具）。</p></blockquote><p>Hadoop 和分布式数据库的不同点在于：</p><ul><li>Hadoop  <strong>存储具有多样性：</strong>不需要根据 schema 来存储数据，直接将数据不加以区分（原始形式）的转储到分布式文件系统（HDFS）中。可以加快数据收集速度，并且让数据消费者来解释数据，增加灵活性；</li><li>Hadoop <strong>处理模型具有多样性：</strong>使用分布式批处理框架可以轻松的在大型数据集上<strong>运行自己的代码</strong>；</li><li>Hadoop <strong>针对频繁故障设计：</strong>MapReduce 被设计为以单个粒度重试任务，当发生失败的概率足够高的时候，这是一种合理的权衡，可以避免将整个作业重试。</li></ul><blockquote><p>ps：文中好像把 MapReduce 和 Hadoop 等价了？</p></blockquote><p>由于 MapReduce 虽然很好懂，但是直接使用比较困难。并且 MapReduce 存在一些性能问题（比如过多的物化中间状态、过多的排序），几种用于分布式批处理的数据流引擎应运而生，它们有以下优点：</p><ul><li>减少排序等昂贵操作；</li><li>减少不必要的 Mapper。实际上没有严格定义的 Mapper 和 Reducer 了，只有<strong>算子</strong>；</li><li>工作流中的连接和数据依赖都是显示声明的，调度程序可以利用<strong>局部性</strong>进行优化；</li><li><strong>算子间的中间状态不保存到 HDFS 中，而是保存到节点的内存或磁盘上</strong>（不放到分布式文件系统中可以减少复制的开销）。但是可能会使得任务执行失败时候的重新计算量变大；</li><li>MapReduce 没开启一个任务都启动一个 JVM，而现在 <strong>JVM 可以重用，减少启动开销</strong>。</li></ul><p>数据流引擎中也引入了图模型，可以在整个图上执行某种离线处理或分析。但由于图算法通常有很多跨机器通信的额外开销，所以会明显拖慢分布式图算法。当图可以放进一台机器的内存（或者甚至能放进磁盘就行），在单机（甚至单线程）上执行图算法的性能也可能大于分布式批处理。只有当单机的内存（磁盘）放不下图的时候，使用分布式方法就不可避免了。</p><p>批处理作业的显著特点是<strong>输出从输入衍生</strong>，并且<strong>输入数据是有界的</strong>，所以批处理作业最终都会完成。而流处理的输入是无界的，作业可能会永远持续下去。</p>]]></content>
+        <content type="html"><![CDATA[<p>最近在 <a href="https://github.com/nutsdb/nutsdb">nutsdb</a> v0.12.5 的发布计划中，有要实现 file lock 这一条，来保证只让开启 DB 的这个进程访问数据库文件夹，而其它的进程无法对该文件夹进行操作。</p><p>在 <a href="https://github.com/elliotchenzichang">Elliot Chen</a> 的建议下接下了这个任务，一开始觉得可能是要自己实现一个 file lock，但是在考察了其它的项目实现文件锁的方式后，发现了一个库：<a href="https://github.com/gofrs/flock">gofrs&#x2F;flock</a>，虽然 star 并不是很多，只有 400+，并且已经好几年没有更新过了，但是看了一眼有足足将近 1.2w 的使用者后，当即决定直接用这个库实现。</p><h2 id="在-nutsdb-中使用-gofrs-x2F-flock"><a href="#在-nutsdb-中使用-gofrs-x2F-flock" class="headerlink" title="在 nutsdb 中使用 gofrs&#x2F;flock"></a>在 nutsdb 中使用 gofrs&#x2F;flock</h2><p>接下来我会详细介绍一下在 nutsdb 中是如何使用 gofrs&#x2F;flock 的。</p><h3 id="gofrs-x2F-flock-的接口介绍"><a href="#gofrs-x2F-flock-的接口介绍" class="headerlink" title="gofrs&#x2F;flock 的接口介绍"></a>gofrs&#x2F;flock 的接口介绍</h3><p>这个库提供的接口相当简单易懂。 首先，通过<code>flock</code>包下的<code>New</code>函数创建一个<code>*Flock</code>，注意传进去的是需要上锁的文件路径，并且<strong>这个文件一定要是存在的</strong>，否则就会报错。</p><p>然后，可以调用<code>Lock</code>或<code>TryLock</code>方法进行上锁，在<code>TryLock</code>的注释中有些到：</p><blockquote><p>TryLock is the preferred function for taking an exclusive file lock.</p></blockquote><p><code>TryLock</code>方法是一个<strong>非阻塞</strong>方法，如果获取锁失败了会返回 false 而不会一直等待 file lock 被释放，所以我采用了<code>TryLock</code>来获取锁。</p><h3 id="实际代码实现"><a href="#实际代码实现" class="headerlink" title="实际代码实现"></a>实际代码实现</h3><p>在 nutsdb 打开的时候，获取文件锁即可。</p><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">flock := flock.New(filepath.Join(opt.Dir, FLockName))</span><br><span class="line"><span class="keyword">if</span> ok, err := flock.TryLock(); err != <span class="literal">nil</span> &#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">nil</span>, err</span><br><span class="line">&#125; <span class="keyword">else</span> <span class="keyword">if</span> !ok &#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">nil</span>, ErrDirLocked</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">db.flock = flock</span><br></pre></td></tr></table></figure><p>释放锁也只需要在 nutsdb 关闭的时候调用 <code>Unlock</code>就可以了。</p><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> !db.flock.Locked() &#123;</span><br><span class="line">    <span class="keyword">return</span> ErrDirUnlocked</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">err = db.flock.Unlock()</span><br><span class="line"><span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">    <span class="keyword">return</span> err</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure><p>借助这个库来实现 file lock 还是很简单的，但是中间遇到了一些小问题。在 v0.12.4 的发布计划中提到了 nutsdb 当前的所有测试用例都是公用一个 DB 实例，所以有一些测试用例在打开 DB 实例后并没有调用关闭方法，所以会导致下一个测试用例执行失败，因为无法再次获取到文件锁了。</p><p>暂时是通过给所有测试用例都调用关闭方法来解决的，后续要通过重构测试用例彻底解决这个问题。</p><h2 id="gofrs-x2F-flock-源码解析"><a href="#gofrs-x2F-flock-源码解析" class="headerlink" title="gofrs&#x2F;flock 源码解析"></a>gofrs&#x2F;flock 源码解析</h2><p>仅仅会调接口当然是不行的 🤣，于是我详细看了一下源码来了解实现原理。这个库的代码非常精简，兼容了多个平台也就 1200+ 行代码，看起来也是不怎么费劲。</p><h3 id="Windows-系统上的实现"><a href="#Windows-系统上的实现" class="headerlink" title="Windows 系统上的实现"></a>Windows 系统上的实现</h3><p>在 Windows 上，<code>gofrs/flock</code> 使用了 <code>kernel32.dll</code> 中的 <code>LockFileEx</code> 和 <code>UnlockFileEx</code> 函数来实现文件锁定：</p><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> (</span><br><span class="line">    kernel32, _         = syscall.LoadLibrary(<span class="string">&quot;kernel32.dll&quot;</span>)</span><br><span class="line">    procLockFileEx, _   = syscall.GetProcAddress(kernel32, <span class="string">&quot;LockFileEx&quot;</span>)</span><br><span class="line">    procUnlockFileEx, _ = syscall.GetProcAddress(kernel32, <span class="string">&quot;UnlockFileEx&quot;</span>)</span><br><span class="line">)</span><br></pre></td></tr></table></figure><p><code>procLockFileEx</code>和<code>procUnlockFileEx</code>这两个变量是 <code>LockFileEx</code> 和 <code>UnlockFileEx</code> 系统调用函数的地址，这两个地址要通过使用<code>syscall.GetProcAddress</code>从<code>kernel32.dll</code>中获取，因为在 Windows 系统上，<code>LockFileEx</code>和<code>UnlockFileEx</code>并不能直接通过<code>syscall</code>包下定义的函数来调用，而要先获取到地址，再使用<code>syscall.syscall6</code>来调用（这个 6 指的是系统调用的参数个数，不过类似于这样的函数已经全部过时了，应该统一使用 <code>syscall.syscallN</code> 来调用）。</p><p>那么在 Windows 系统上，是如何实现的共享锁和独占锁呢？是通过一些标志来确定的，在<code>procLockFileEx</code>函数的参数中需要填入这个文件锁对应的锁类型标志，这些标志也定义在<code>flock_winapi.go</code>中：</p><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span> (</span><br><span class="line">    winLockfileFailImmediately = <span class="number">0x00000001</span></span><br><span class="line">    winLockfileExclusiveLock   = <span class="number">0x00000002</span></span><br><span class="line">    winLockfileSharedLock      = <span class="number">0x00000000</span></span><br><span class="line">)</span><br></pre></td></tr></table></figure><p><code>winLockfileExclusiveLock</code> 和 <code>winLockfileSharedLock</code>分别表示要获取共享文件锁还是独占文件锁。只需要在获取锁时根据需要的类型将对应的<code>flag</code>传入系统调用中就可以了。</p><p>解锁也是一样，只需要调用<code>procUnlockFileEx</code>系统调用，只是少传一个<code>flag</code>参数，其余的使用跟<code>procLockFileEx</code>都是一样的。</p><p>gofrs&#x2F;flock 分别为这两个系统调用封装成了<code>lockFileEx</code>和<code>unlockFileEx</code>函数来方便的加锁解锁。</p><h3 id="类-Unix-系统上的实现"><a href="#类-Unix-系统上的实现" class="headerlink" title="类 Unix 系统上的实现"></a>类 Unix 系统上的实现</h3><p>在 Unix 系统上，file lock 的实现就相对更加简单一点了，因为是可以直接通过<code>syscall</code>包下定义的<code>Flock</code>函数，根据给这个函数传入的第二个参数<code>flag</code>，来决定这个系统调用的具体行为：</p><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">syscall.Flock(<span class="type">int</span>(f.fh.Fd()), flag)</span><br></pre></td></tr></table></figure><p>使用到了这些<code>flag</code>：</p><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">syscall.LOCK_EX <span class="comment">// 获取独占锁</span></span><br><span class="line">syscall.LOCK_SH <span class="comment">// 获取共享锁</span></span><br><span class="line">syscall.LOCK_UN <span class="comment">// 解锁</span></span><br></pre></td></tr></table></figure><p>需要注意的是，在某些类 UNIX 操作系统上，使用<code>Lock</code>方法可能会自动将共享锁替换为独占锁。在使用独占锁（Exclusive Locks）和共享锁（RLock()）时要小心，因为调用 Unlock() 可能会意外释放曾经是共享锁的独占锁。</p><h3 id="TryLock-的实现"><a href="#TryLock-的实现" class="headerlink" title="TryLock 的实现"></a>TryLock 的实现</h3><p>gofrs&#x2F;flock 有一个非常好的功能就是可以实现非阻塞的获取锁，一旦获取锁失败了就直接返回，那么这是怎么实现的呢？</p><p>在 Windows 上，<code>try</code>的实现要稍微简单一些，在调用<code>lockFileEx</code>方法的时候，多添加了一个之前列出来但没提到的标志：<code>winLockfileFailImmediately</code>。</p><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">_, errNo := lockFileEx(syscall.Handle(f.fh.Fd()), flag|winLockfileFailImmediately, <span class="number">0</span>, <span class="number">1</span>, <span class="number">0</span>, &amp;syscall.Overlapped&#123;&#125;)</span><br></pre></td></tr></table></figure><p>有了这个标志就意味着非阻塞的尝试，如果 <code>lockFileEx</code> 返回特定的错误码，如 <code>ErrorLockViolation</code> 或 <code>syscall.ERROR_IO_PENDING</code>，则表示无法立即获得锁定，函数会立即返回，并返回 false 表示尝试失败。</p><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> errNo &gt; <span class="number">0</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> errNo == ErrorLockViolation || errNo == syscall.ERROR_IO_PENDING &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">false</span>, <span class="literal">nil</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="literal">false</span>, errNo</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure><p>而在类 UNIX 系统上，在调用<code>FLock</code>时，加上一个标志位<code>syscall.LOCK_NB</code>，如果 <code>syscall.Flock</code> 返回 <code>syscall.EWOULDBLOCK</code> 错误，则表示无法立即获得锁定，函数会立即返回，并返回 false 表示尝试失败。</p><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">err := syscall.Flock(<span class="type">int</span>(f.fh.Fd()), flag|syscall.LOCK_NB)</span><br></pre></td></tr></table></figure><p>不过在类 Unix 系统上还实现了一个<code>reopenFDOnError</code>方法，如果<code>Flock</code>返回的错误是<code>syscall.EIO</code> 或 <code>syscall.EBADF</code>，那么该方法会尝试重新打开文件描述符，并再次进行尝试。这是因为在某些情况下，文件描述符可能会在错误发生后被关闭，所以我们尝试重新打开文件描述符，确保可以继续尝试获取锁定。</p><p>这样 gofrs&#x2F;flock 就实现了非阻塞的文件锁定。</p><h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p><code>gofrs/flock</code> 是一个功能强大且易于使用的 Go 语言库，用于实现文件锁定。它通过封装底层的系统调用，在不同的操作系统上提供了一致的接口，使得开发者可以轻松地确保多个进程对同一个文件的并发访问是安全的。无论是在 Linux&#x2F;Unix 还是 Windows 等操作系统上，<code>gofrs/flock</code> 都为文件锁定提供了可靠的解决方案。</p><p>虽然不是自己从头开发的🤣，但也是为 nutsdb 完成了一个小目标，希望 nutsdb 可以越来越完善。</p>]]></content>
       
       
       <categories>
           
-          <category> DDIA </category>
+          <category> nutsdb 开发记录 </category>
           
       </categories>
       
       
         <tags>
             
-            <tag> 阅读笔记 </tag>
+            <tag> 数据库 </tag>
+            
+            <tag> nutsdb </tag>
             
         </tags>
       
@@ -29,98 +31,25 @@
     
     
     <entry>
-      <title>DDIA：一致性与共识</title>
-      <link href="/post/6b17822.html"/>
-      <url>/post/6b17822.html</url>
+      <title>LSM-Tree 概述</title>
+      <link href="/post/73f6d0aa.html"/>
+      <url>/post/73f6d0aa.html</url>
       
-        <content type="html"><![CDATA[<p>本章讨论了分布式一致性与共识的<del>滑梯</del>。</p><p>在分布式一致性方面，主要讨论了线性一致性和因果一致性。</p><p>线性一致性的目的是<strong>让多副本数据看起来好像只有一个副本一样</strong>，并且使其上所有操作都原子性地生效。</p><p>在线性一致性系统中，只要客户端完成写操作，那么所有客户端进行读操作都能够看到刚刚写入的值，而不会读到旧值。也就是线性一致性是一个<strong>新鲜度保证</strong>。</p><p>通过记录所有请求和相应的时序，并检查它们是否可以排列成有效的顺序，以检查一个系统是否是线性一致性的是可能的，但这个<strong>计算代价是昂贵的</strong>。</p><p>线性一致性有用的场景：</p><ul><li>锁和领导选举；</li><li>约束和唯一性保证；</li><li>跨信道的时序依赖。</li></ul><p>如何实现线性一致的系统？最简单的答案就是真的只用一个副本（因为线性一致的目的就是让多个副本看起来像只有一个副本）。但这个方案显然无法容错，所以使用复制的方法，哪些可以保证线性一致性呢？</p><ul><li>单主复制（可能线性一致）：如果从主库或者跟主库同步更新的从库读取数据，那么可能是线性一致的。但如果使用了快照隔离，这样不能保证读取的新鲜度，无法保证线性一致。或并发处理上出现问题，也无法保证线性一致。</li><li><strong>共识算法（线性一致）</strong>：共识算法和单主复制类似，但是它避免了单主复制中脑裂和陈旧副本等问题，所以共识算法可以真正做到线性一致；</li><li>多主复制（非线性一致）：多主复制在每个数据中心都有一个领导者，都可以进行写入，那么他们的副本往往都是不一致的，在异步复制写入到其它节点时，需要解决写入冲突。</li><li>无主复制（也许不是线性一致）：最安全的方式是假定无主复制的系统不是线性一致的。</li></ul><p>在大多数分布式系统中，<strong>为了提高性能</strong>，而选择了牺牲线性一致性，而不是为了容错。没有办法在保持线性一致性的基础上提高性能，只能通过选择<strong>更弱的一致性模型</strong>来提高性能。</p><p>为了能够提高性能，选择<strong>因果一致性</strong>可能会更好。如果一个系统服从因果关系所规定的顺序，我们就说它是因果一致的。</p><p>线性一致性将所有操作放在单一的全序时间线中，而<strong>因果一致性则是偏序的，它允许一些操作并发执行</strong>（不存在因果关系的操作）。这部分并发操作可以减少不必要的等待和通信，可以提高系统的性能。而且对网络问题的敏感度要低得多。</p><p>我们可以使用<strong>兰伯特时间戳</strong>等方式来生成与因果关系一致的序列号。这样的序列号可以提供一种全序关系，使得那些不是并发的操作之间可以进行比较，从而可以<strong>根据这个全序关系来捕获关于因果的信息</strong>。</p><p>但有时候，仅仅有这个序列号还不够：考虑这样一个场景，我们需要确保用户名是唯一的，并拒绝同一用户名的其他并发注册。如果一个节点要通过注册，则需要知道其他的节点没有在并发抢注同一用户名的过程中。</p><p>那么怎么让这个节点知道其它节点有没有并发抢注同一用户名呢？这时候就需要<strong>共识</strong>了。</p><p>共识问题通常形式化如下：一个或多个节点可以 <strong>提议（propose）</strong> 某些值，而共识算法 <strong>决定（decides）</strong> 采用其中的某个值。</p><p>共识算法必须满足以下性质：</p><ul><li>一致同意：没有两个节点的决定不同；</li><li>完整性：没有节点决定两次；</li><li>有效性：如果一个节点决定了值 <code>v</code> ，则 <code>v</code> 由某个节点所提议（不能凭空做出一个决定）；</li><li><strong>终止</strong>：由所有未崩溃的节点来最终决定值（这是一个<strong>活性属性</strong>，其它三个都是<strong>安全属性</strong>，以确保当系统故障了，一个共识算法不能简单地永远闲坐着等死，<strong>它必须取得进展</strong>）。</li></ul><p>有很多等价的共识问题：</p><ul><li>线性一致性的 CAS 寄存器；</li><li>原子事务提交；</li><li>全序广播；</li><li>锁和租约；</li><li>成员&#x2F;协调服务；</li><li>唯一性约束（即上面那个例子中的场景）。</li></ul><p>如果采用“<strong>独裁</strong>”的方式，即将决策的权利都交给一个节点，那么事情就简单了。但这样就会导致如果这个“独裁者”宕机了，系统可能就无法推进。</p><p>应对这种情况有三种方式：</p><ol><li>等待领导者恢复（无法满足终止属性）；</li><li>人工故障切换（无法满足终止属性，且会更慢）；</li><li><strong>使用算法自动切换领导者</strong>。</li></ol><blockquote><p>如果你发现自己想要解决的问题可以归结为共识，并且希望它能容错，使用一个类似 ZooKeeper 的东西是明智之举。</p></blockquote><p>并不是所有的系统都需要共识，也不是所有系统都需要线性一致性。一切都是根据场景的需要（甚至大多数数据库都不支持）。</p>]]></content>
+        <content type="html"><![CDATA[<h1 id="LSM-Tree-概述"><a href="#LSM-Tree-概述" class="headerlink" title="LSM-Tree 概述"></a>LSM-Tree 概述</h1><h2 id="为什么要有-LSM-Tree"><a href="#为什么要有-LSM-Tree" class="headerlink" title="为什么要有 LSM-Tree"></a>为什么要有 LSM-Tree</h2><p>在传统的树形结构索引中，大量写入操作会带来额外的 IO 开销，要花费两倍的 IO 成本来维护<strong>实时索引</strong>，并且每次写入都会有两次 IO 操作，一次读 page，一次将 page 写回，所以要引入一种新的算法来应对这种场景，这正是 LSM-Tree 诞生的理由。</p><p>LSM-Tree 的核心思想就是<strong>写入延迟</strong>、采用<strong>批量写入</strong>，并且消除了随机的就地更新。LSM-Tree 首先将数据缓存在内存当中，当内存中的数据达到一个阈值时，将它们批量写入磁盘中。</p><p>当然，有得有失，LSM-Tree 在读取的时候会存在短板，所以 LSM-Tree 适用于<strong>写多读少</strong>的场景。</p><h2 id="基础的-LSM-Tree-算法"><a href="#基础的-LSM-Tree-算法" class="headerlink" title="基础的 LSM-Tree 算法"></a>基础的 LSM-Tree 算法</h2><p>在 LSM-Tree 中，数据首先被添加到 MemTable 中，这个 MemTable 是一个<strong>有序的内存数据结构</strong>，但并没有规定具体是哪一种，可以是红黑树也可以是跳表等。这样可以起到使数据先排好序的作用。当 MemTable 被写入的量达到阈值的时候，会被刷入到磁盘的一个新的 SST 文件中。</p><p>SST 这种文件格式有许多好处：</p><ul><li>可以做到高效的数据文件合并，即使文件大于可用内存，<strong>合并段的操作仍然简单高效</strong>。</li><li>不需要在内存中保存所有键的索引，可以使用<strong>稀疏索引</strong>，因为 SST 文件是有序的。</li><li>由于读取请求无论如何都需要扫描所请求范围内的多个键值对，因此可以将这些记录分组为块（block），并在将其写入硬盘之前对其进行<strong>压缩</strong>。</li></ul><p>显然这种仅追加的方式，会产生越来越多的不可变的有序文件，但并不会去更新旧文件中的重复条目（或被删除的记录），所以会产生冗余（空间放大）。系统需要定期的执行<strong>合并操作（Compact）</strong>，来把文件合并，消除其中重复的更新或删除操作。</p><p>合并并不仅仅是为了节省磁盘资源的浪费，更多的是要<strong>通过减少文件数量的增长，来保证读操作的性能。</strong>由于 LSM-Tree 文件有序的特性，合并操作是非常高效的。</p><p>LSM-Tree 的读取操作首先在内存中读取 MemTable，如果没有读到，再去磁盘中读取，从新的文件开始往旧的文件读取。所以 LSM-Tree 的读取性能自然要比采用就地修改的其它结构要低了。当然，可以在内存中建立索引来提高读取的速度。同时可以通过布隆过滤器来进行优化，可以大概率避免读完所有 SST 文件发现某个 Key 并不在数据库中。</p><p>所以从整体来上来 LSM-Tree，其实就是牺牲读取性能来换得写入性能，避免随机写，但带来了随机读。</p><h2 id="Compact"><a href="#Compact" class="headerlink" title="Compact"></a>Compact</h2><h3 id="基础的-Compact-方法"><a href="#基础的-Compact-方法" class="headerlink" title="基础的 Compact 方法"></a>基础的 Compact 方法</h3><p>基本的合并方法非常简单：当创建一定数量的小文件后，将它们合并成一个单独的中等大小的文件，在这些中等大小的文件又到达一定数量后，再将它们合并为更大的文件。</p><p>这种方法带来的结果就是大量的文件会被创建，这样和我们去控制文件数量保证读取性能的思路就背道而驰了。</p><h3 id="LevelDB-中的-Compact-方法"><a href="#LevelDB-中的-Compact-方法" class="headerlink" title="LevelDB 中的 Compact 方法"></a>LevelDB 中的 Compact 方法</h3><p>在 LevelDB 等数据库中，通过实现<strong>分级（Leveled）</strong>而不是大小，来将 SST 文件进行分组。这减少了最差情况下大量文件的读取，同样减少了单个压缩的（对整个数据集的）相对冲击。</p><p>这种方法跟基本方法有两个不同的关键点：</p><ul><li>每一层的键不会重复，所以在某层寻找一个关键字的时候只需要查询一个文件。</li><li>文件一次被合并成高层级的一个文件。当一层满了，一个文件会从这一层抽离，并且合并进入上一级来创建加入更多数据的空间。这比起基本方法中，把相似大小的文件合并成一个单独的较大文件，略有些不同。</li></ul><p>由于低层次的文件会被合并到高层次的文件中去，<strong>相比于基本方法需要的整体空间会更少，读性能也会更高，但会带来更大的 IO 负载</strong>，对于单纯以写为目的的情况，并没有帮助。</p><h2 id="LSM-Tree-更多的一些优势"><a href="#LSM-Tree-更多的一些优势" class="headerlink" title="LSM-Tree 更多的一些优势"></a>LSM-Tree 更多的一些优势</h2><p>LSM-Tree 除去更好的写性能之外还有一些优势：</p><ul><li>SST 文件是仅追加的，所以锁定语义的实现相比于树结构更加简单。</li><li>在同样硬件的情况，硬件的提升对读性能的提升更大，所以在不选择提升硬件的情况下想要提升写性能可以选择 LSM-Tree。</li></ul><h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>LSM-Tree 在 B+ 树和哈希索引之间取得了均衡，通过管理一组而不是单独一个索引文件，LSM-Tree 把 B+ 树或哈希索引中开销较大的随机写入 IO 替换为了快速的顺序 IO。</p><p>而读操作则不得不处理大量的随机 IO。并且 LSM-Tree 将带来额外的合并开销。</p>]]></content>
       
       
       <categories>
           
-          <category> DDIA </category>
+          <category> LSM-Tree </category>
           
       </categories>
       
       
         <tags>
             
-            <tag> 阅读笔记 </tag>
+            <tag> 数据库 </tag>
             
-        </tags>
-      
-    </entry>
-    
-    
-    
-    <entry>
-      <title>DDIA：分布式系统的麻烦</title>
-      <link href="/post/349aae9a.html"/>
-      <url>/post/349aae9a.html</url>
-      
-        <content type="html"><![CDATA[<p>在分布式系统中会发生的错误和处理错误的方式跟在单机上有本质的区别：</p><blockquote><p>装有良好软件的个人计算机通常要么功能完好，要么完全失效，而不是介于两者之间。</p></blockquote><p>而在分布式系统中，系统的部分可能在正常运行，但也有一部分会以某种<strong>不可预知</strong>的方式被破坏，这被称作部分失效（partial failure）。而难点也正是在于部分失效是 <strong>不确定性的（nondeterministic）</strong>。</p><p>在这一章中，讨论了分布式系统中可能发生的一些问题：</p><ul><li>网络数据包可能会丢失或延迟；</li><li>节点的时钟可能与其他节点的时钟不同步；</li><li>一个进程可能由于一些原因被暂停，而恢复的时候进程并不会意识到自己被暂停过了。</li></ul><p>这类问题都是部分失效的问题，所以分布式系统需要<strong>在软件层面建立对部分失效的容错机制</strong>，这样整个系统在部分失效的情况下也可以正常运行。</p><p>为了容忍错误，首先需要检测它们。大部分分布式算法都是通过<strong>超时</strong>来确定远程节点是否可用。但是超时检测并不能判断出节点到底是出现故障了还是由于网络环境的波动而导致响应消息延迟。</p><p>由于分布式系统节点之间通信的唯一方式是通过网络发送数据包，所以在分布式系统中不能依赖于单一节点做出判断，通常都是需要<strong>法定人数</strong>达成一致。</p><p>所以分布式系统的实现是非常困难的，对于一般的（能够在单机上就能处理的问题），把系统放在一台机器上是一种更加合理的选择。但需要获取容错和低延迟时，就不得不使用分布式系统了。</p><p>在分布式系统重出现的网络、时钟或进程的问题，可以通过昂贵的代价来解决。如果不是安全关键的系统，如航天、金融相关的，那么<strong>便宜而不安全</strong>的组件是一种更好的选择（我们的目的就是<strong>从不可靠的组件构建可靠的系统</strong>）。否则才去选择昂贵而安全的组件。</p><p>研究人员提出了很多共识算法，这些共识算法可以达到容忍分布式系统中出现的问题的目的。当然算法在理论上也许可以证明正确（一个系统模型中的算法总是满足它在所有我们假设可能发生的情况下的性质，那么这个算法是正确的），但是在现实中，总是有一些错误潜伏在系统中，会打破提出的假设。所以经验测试同样很重要。</p>]]></content>
-      
-      
-      <categories>
-          
-          <category> DDIA </category>
-          
-      </categories>
-      
-      
-        <tags>
-            
-            <tag> 阅读笔记 </tag>
-            
-        </tags>
-      
-    </entry>
-    
-    
-    
-    <entry>
-      <title>DDIA：事务</title>
-      <link href="/post/9058578b.html"/>
-      <url>/post/9058578b.html</url>
-      
-        <content type="html"><![CDATA[<blockquote><p>事实并非如此简单：与其他技术设计选择一样，事务有其优势和局限性。为了理解这些权衡，让我们了解事务所提供保证的细节 —— 无论是在正常运行中还是在各种极端（但是现实存在）的情况下。</p></blockquote><p>事务的作用是允许应用程序假装某些并发问题和某些类型的硬件和软件故障不存在（对应用程序透明）。将各式各样的错误简化成一种简单的情况：事务中止（transaction），应用程序需要做的就是重试即可。</p><p>事务大大简化了应用程序对于一些问题的处理，这导致了底层事务在实现上具有很高的复杂度，并且会影响性能。所以事务虽然可以帮助防止很多问题发生，但如果在非常简单的访问模式下（例如每次读写单条记录），根本无需事务。事务往往使用在更加复杂的访问模式。</p><blockquote><p>今天，当一个系统声称自己 “符合 ACID” 时，实际上能期待的是什么保证并不清楚。不幸的是，ACID 现在几乎已经变成了一个营销术语。</p></blockquote><p>可以看出作者对这些厂商营销很不满，已经很多次提到营销创造出来的词汇或者制造噱头的情况了。</p><p>事务的安全保证通常用 ACID 来描述：</p><ul><li><p>原子性（Atomicity）：<strong>能够在错误时中止事务，丢弃该事务进行的所有写入变更的能力。</strong>（作者说或许<strong>可中止性</strong>是更好的术语）。</p></li><li><p>一致性（Consistency）：<strong>对数据的一组特定约束必须始终成立</strong>。</p></li><li><p>隔离性（Isolation）：<strong>同时执行的事务之间是相互隔离的。</strong></p></li><li><p>持久性（Durability）：<strong>一旦事务成功完成，即使发生硬件故障或数据库崩溃，写入的任何数据也不会丢失。</strong></p></li></ul><p>事务并发执行会引起以下问题：</p><ul><li>脏读：一个客户端读取到另一个客户端尚未提交的写入。<strong>读已提交</strong> 或更强的隔离级别可以防止脏读；</li><li>脏写：一个客户端覆盖写入了另一个客户端尚未提交的写入。<strong>几乎所有</strong>的事务实现都可以防止脏写；</li><li>读取偏差（不可重复读）：在同一个事务中，客户端在不同的时间点会看见数据库的不同状态。</li><li>丢失更新：两个客户端同时执行读取-修改-写入操作序列。后完成的写操作没有根据先完成的写操作写入，而是直接覆盖了前面的写操作，前面一次写入就看作丢失；</li><li>写入偏差：一个事务读取一些东西，根据它所看到的值作出决定（即读取跟写入是因果关系，如果在写入时，读取的值已经是过时的，就会发生写入偏差）；</li><li>幻读：事务读取某些符合搜索条件的对象，另一个事务写入一个符合条件的记录，导致幻读。</li></ul><p>书中还提到了许多细节，这一章内容实在是太多了，还是要再看一次。</p><p>读未提交、读提交、快照隔离这些隔离级别都是弱隔离级别，它们仍然需要应用程序开发人员手动处理一些问题。只有可串行化隔离级别才能防范所有这些问题。</p><p>可串行化隔离级别有三种实现方式：</p><ol><li>字面上的串行化：如果事务执行足够快（短），并且单个 CPU 已经能够处理事务吞吐量，那么直接在单核上处理是一个简单有效的选择（如 VoltDB，Redis）；</li><li>两阶段锁定（2PL）：经过 Grow 和 Shrink 两阶段。但是性能很差，所以尽量避免使用它；</li><li>可串行化快照隔离（SSI）：在快照隔离级别上，使用乐观的方式，在事务提交的时候检查，事务中做得修改能否支持可串行化，如果不可以，那么就中止事务。有两种检测方式：<ol><li>检测对旧 MVCC 对象版本的读取，即在提交的时候检查之前忽略的写入是否已经生效了；</li><li>检测影响先前读取的写入：在索引（或表中）记录哪些数据被读取了，要对这些数据写入时，对读取这些数据的事务进行通知，告知它们，读取的数据可能已经过时了；</li></ol></li></ol><p>无论哪种数据模型，事务都是非常有价值的数据库功能。</p><p>本章在单机数据库中讨论这些内容，而引入到分布式数据库中又会导致一系列新的挑战。</p>]]></content>
-      
-      
-      <categories>
-          
-          <category> DDIA </category>
-          
-      </categories>
-      
-      
-        <tags>
-            
-            <tag> 阅读笔记 </tag>
-            
-        </tags>
-      
-    </entry>
-    
-    
-    
-    <entry>
-      <title>DDIA：分区</title>
-      <link href="/post/aeb0d97f.html"/>
-      <url>/post/aeb0d97f.html</url>
-      
-        <content type="html"><![CDATA[<h1 id="本章小结"><a href="#本章小结" class="headerlink" title="本章小结"></a>本章小结</h1><blockquote><p>我们必须跳出电脑指令序列的窠臼。 叙述定义、描述元数据、梳理关系，而不是编写过程。</p><p>—— Grace Murray Hopper，未来的计算机及其管理（1962）</p></blockquote><p>这一章讲了在分布式数据库中的分区问题。</p><p><strong>分区的目的</strong>：当数据量非常大的时候，在单台机器上存储和处理不再可行，所以需要把大数据集拆分成更小的子集，这些子集称为分区，将分区存储在不同的节点上，可以增加并行性，同时增加可以存储的数据量。</p><p>主要的分区方法：</p><ol><li>键范围（Range）分区：</li></ol><p>​对一个分区指定 StartKey 和 EndKey，所有在 [StartKey, EndKey] 之间的键都存储在这个分区中。这种分区方式的优点是一个分区中的 Key 都是有序的，可以很好的支持范围查询，但缺点是如果经常访问相邻的 Key 会导致热点风险。</p><ol start="2"><li>散列（Hashing）分区：</li></ol><p>​根据散列函数来决定一个键应该被分到哪个区间，这种方式破坏了键的有序性，从而范围查询就效率低下了，但是分配更加均匀了。</p><p>​使用这种分区方式，通常是先创建固定数量的分区，这个数量会超过节点数量，当添加节点时，新的节点会从原本的节点哪里窃取分区，删除节点则相反。或者使用动态分区。</p><ol start="3"><li>混合分区：</li></ol><p>​例如使用符合主键：使用键的一部分来标识分区，而使用另一部分作为排序顺序。当主键确定的时候，可以进行高效的范围查询。</p><p>次级索引也需要分区，有两种方法：</p><ol><li>基于文档分区（本地索引）：其中次级索引存储在与主键和值相同的分区中。这种分区的方式写入的效率高，但读取有分散&#x2F;收集的额外开销；</li><li>基于关键词分区（全局索引）：其中次级索引被分散在不同的分区。这样分区，读取就不需要分散&#x2F;收集，但写入需要更新各个分区。</li></ol><p>分区再平衡（rebalancing）：随着时间的推移，节点的状态可能会改变，要进行分区迁移。</p><p>几种分区再平衡的方法：</p><ol><li>固定数量的分区：</li></ol><p>​创建固定数量的分区，这个数量会超过节点数量，当添加节点时，新的节点会从原本的节点哪里窃取分区，删除节点则相反。</p><ol start="2"><li>动态分区：</li></ol><p>​当分区中的数据多于上限时会进行分区分裂（Split），少于下限时会进行分区合并（Merge）。</p><ol start="3"><li>按节点比例分区：</li></ol><p>​给每个节点创建固定数量的分区。在这种情况下，每个分区的大小与数据集大小成比例地增长，而节点数量保持不变，但是当增加节点数时，分区将再次变小。</p><p>请求路由：解决当客户端想要发出请求时，判断要给哪个节点发送。</p><p>请求路由的几个方式：</p><ol><li>允许客户联系任意节点，如果正确则直接处理请求，否则由该节点将请求路由到正确的节点；</li><li>客户联系路由层，由路由层来进行负载均衡；</li><li>客户端可以知道分区和节点是如何分配的，自行决定如何发送请求。</li></ol>]]></content>
-      
-      
-      <categories>
-          
-          <category> DDIA </category>
-          
-      </categories>
-      
-      
-        <tags>
-            
-            <tag> 阅读笔记 </tag>
+            <tag> 存储引擎 </tag>
             
         </tags>
       
