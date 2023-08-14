@@ -4,6 +4,33 @@
   
     
     <entry>
+      <title>Golang GC 过程及原理</title>
+      <link href="/post/4425c0d3.html"/>
+      <url>/post/4425c0d3.html</url>
+      
+        <content type="html"><![CDATA[<p>所谓的 GC 就是回收掉不再需要使用的内存块，在 Java、Go 这样的带自动回收的语言中，会自动清理掉这样的垃圾内存，而在不支持垃圾回收的语言如 C++ 中，如果没有手动释放掉内存，那么这些内存就是内存泄漏。</p><h2 id="Golang-使用的垃圾回收算法"><a href="#Golang-使用的垃圾回收算法" class="headerlink" title="Golang 使用的垃圾回收算法"></a>Golang 使用的垃圾回收算法</h2><p>Golang 用到的垃圾回收算法是标记清扫算法，用<strong>三色抽象</strong>可以清晰的展现追踪过程中数据标记的变化：</p><ol><li>垃圾回收开始的时候将所有对象都标记为白色；</li><li>把直接追踪到的根节点标记为灰色，灰色就表示基于当前节点展开的追踪还未完成；</li><li>遍历根节点所有的子节点，并将子节点标记为黑色，当该根节点的子节点都遍历完成之后，将根节点标记为黑色；</li><li>继续将灰色节点的子节点拿出来进行标记，直到没有灰色节点了，那么剩下的白色节点都是垃圾。</li></ol><p>有点类似于层序遍历的过程。</p><p>在 Golang 中，着色为灰色意味着将 mspan 结构体中的 gcmarkBits 位图中对应的位设置为 1，并加入全局变量 work 中的工作队列；着色为黑色意味着将 gcmarkBits 对应的位设置为 1；而着色为白色则意味着 gcmarkBits 对应的位为 0。</p><h2 id="Golang-GC-的三种模式"><a href="#Golang-GC-的三种模式" class="headerlink" title="Golang GC 的三种模式"></a>Golang GC 的三种模式</h2><ol><li>gcBackgroundMode，默认模式，标清清扫都是并发执行（<strong>用户程序与垃圾回收程序并发执行</strong>）的；</li><li>gcForceMode，只在清扫阶段并发；</li><li>gcForceBlockMode，GC 全程 STW。</li></ol><p>我们只要重点了解默认模式即可。</p><h2 id="Golang-GC-过程中的两个全局变量"><a href="#Golang-GC-过程中的两个全局变量" class="headerlink" title="Golang GC 过程中的两个全局变量"></a>Golang GC 过程中的两个全局变量</h2><ol><li>gcController：用于在标记过程中记录一些信息，比如一个标记周期中，不同类型的 mark worker 是否还需要启动；是否需要辅助标记；已经执行了多少扫描工作等等；</li><li>work：用于存储全局工作信息，比如提供全局工作队列缓存，记录栈、数据段等需要扫描的 root 节点的相关信息。</li></ol><h2 id="gcBackgroundMode-执行流程"><a href="#gcBackgroundMode-执行流程" class="headerlink" title="gcBackgroundMode 执行流程"></a>gcBackgroundMode 执行流程</h2><ol><li>标记准备阶段：完成上一轮没有完成的清扫工作；为每个 P 创建自己的 mark worker，但暂时先进入休眠，等待到标记阶段被调度；</li><li>第一次 STW：进行一些同步工作。开启写屏障，GC 进入 _GCMark 阶段；在全局变量 work 中记录 bss 段、数据段和栈上的 root 节点信息。</li><li>结束 STW，进入并发标记阶段：mark worker 得到调度，进行扫描工作，直到没有灰色节点。</li><li>第二次 STW：GC 进入 GCMarkTermination 阶段，停止 mark worker 和 assist worker。GC 再进入 GCOff 阶段，并关闭写屏障。</li><li>进入清扫阶段：在清扫阶段 sweeper 协程会被放到工作队列中等待调度，等到它被调度时就进行清扫工作，而且申请内存的协程也会进行辅助清扫。</li></ol><h2 id="什么是写屏障？"><a href="#什么是写屏障？" class="headerlink" title="什么是写屏障？"></a>什么是写屏障？</h2><p>写屏障指的是会在写操作中插入指令，来通知垃圾回收器对象被修改了，并且要把修改记录到记录集中。</p><p>如果有了写屏障，那么在 GC 扫描过程中就可以不用担心 GC 在扫描的过程中内存变化，比如清扫掉了正在使用的内存。是一种优化 GC 的手段。</p><h3 id="插入写屏障"><a href="#插入写屏障" class="headerlink" title="插入写屏障"></a>插入写屏障</h3><p>插入写屏障指的是给黑色对象增加引用时触发写屏障，比方说给黑色对象 A 增加到白色对象 C 的引用时，会将 C 着色为灰色，或者将 A 退回灰色。</p><h3 id="删除写屏障"><a href="#删除写屏障" class="headerlink" title="删除写屏障"></a>删除写屏障</h3><p>白色对象 C 是一个被黑色对象 A 引用的对象，删除灰色对象 B 到白色对象 C 的引用时，会把白色对象 C 着色为灰色。这样可以防止 C 被回收。</p><h3 id="混合写屏障"><a href="#混合写屏障" class="headerlink" title="混合写屏障"></a>混合写屏障</h3><p>混合写屏障就是 Golang 采用的方式，结合了插入写屏障和删除写屏障来最大化减小 STW 的时间。</p><h2 id="Golang-的标记清扫法具体是如何缩短-GC-暂停时间的？"><a href="#Golang-的标记清扫法具体是如何缩短-GC-暂停时间的？" class="headerlink" title="Golang 的标记清扫法具体是如何缩短 GC 暂停时间的？"></a>Golang 的标记清扫法具体是如何缩短 GC 暂停时间的？</h2><p>GC 只会在回收周期开始与标记结束时采用 STW 来进行必要的同步，标记和清扫工作都是并发执行的，而清扫则是 lazy 的，一部分开销也会分摊到内存分配过程中。</p><p>在引入混合写屏障之前，只有插入写屏障，这需要对所有堆栈的写操作都开启写屏障，代价太大。所以为了让这个开销变小，选择忽略协程栈上的写操作，在标记完所有对象后，再遍历一次那些被激活的栈帧。但由于 Go 程序通常会有大量的协程，重新扫描栈帧的代价也很大。</p><p>所以用这种方式，就需要在扫描栈帧的时候 STW，又导致 STW 时间过长。如果可以在忽略栈上的写操作的同时又能够保证写入栈上的数据不会让 mark worker 不知道，就可以不用 STW 了。</p><p>删除写屏障刚好符合这个要求。所以用到混合写屏障可以大大减少第二次 STW 的时间。</p><h2 id="Golang-GC-如何缓解内存分配压力"><a href="#Golang-GC-如何缓解内存分配压力" class="headerlink" title="Golang GC 如何缓解内存分配压力"></a>Golang GC 如何缓解内存分配压力</h2><p>golang 实现了辅助标记和辅助清扫工作，也就是在分配内存的时候，需要先协助进行标记或清扫才能获得内存。</p><p>或者可以用 gcController 那里窃取 credit，因为 mark worker 和 sweeper 进行的标记清扫工作的额度会存放在这里。</p><h2 id="Golang-GC-如何解决并发标记的分工问题？"><a href="#Golang-GC-如何解决并发标记的分工问题？" class="headerlink" title="Golang GC 如何解决并发标记的分工问题？"></a>Golang GC 如何解决并发标记的分工问题？</h2><p>每个 P 都有自己的工作队列 wbuf1 和 wbuf2，总是从 wbuf1 添加任务，如果 wbuf1 满了就将二者交换，如果还是满的就将当前的 wbuf 放到全局变量 work 中的全局工作队列中。</p><p>这样的话，如果自己的工作队列太满了，就可以分配一部分到全局工作队列中让本地工作队列为空的 P 获取任务，反之也可以从全局工作队列中获取其它 P 来不及处理的任务。</p><h2 id="Golang-GC-如何控制-GC-的-CPU-使用率？"><a href="#Golang-GC-如何控制-GC-的-CPU-使用率？" class="headerlink" title="Golang GC 如何控制 GC 的 CPU 使用率？"></a>Golang GC 如何控制 GC 的 CPU 使用率？</h2><p>GC 的目标 CPU 使用率为 25%，所以会以 CPU 核心数乘以 CPU 目标使用率来决定启动多少 mark worker，如果出现小数就 +0.5，但这样可能会与目标有所偏差，所以 mark worker 也有两种类型：</p><ul><li>Dedicated：一直执行标记任务直到被抢占；</li><li>Fractional：除了被抢占外还可以主动让出。</li></ul><p>在全局变量 gcController 中会记录启动了多少 Dedicated worker，也会记录 Fractional worker 需要完成多少任务。当调度器恢复 mark worker 的时候，要设置worker运行的模式，如果 Dedicated 模式的 worker 数量还没达到上限，就设置为 Dedicated，否则就看 Fractional worker 是否已经达到了工作量，没有达到就设置为 Fractional worker。</p><p>当 Fractional worker 达到工作量之后，就可以自行让出 CPU，来达到控制 CPU 使用率的效果。</p>]]></content>
+      
+      
+      <categories>
+          
+          <category> Golang </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> Golang </tag>
+            
+            <tag> 底层原理 </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
       <title>Golang 堆内存管理和分配原理</title>
       <link href="/post/80a40d2a.html"/>
       <url>/post/80a40d2a.html</url>
