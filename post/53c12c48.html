@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang=en>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="&#x3D; 和 :&#x3D; 有什么区别？&#x3D; 用于给变量或常量赋值，而 :&#x3D; 用于定义并给变量赋值。 new 和 make 的区别是什么？ new 和 make 都用来分配内存，但 make 即分配内存也初始化内存，new 只将内存清 0，并不初始化内存； make 返回的是引用类型本身，而 new 返回的是指向类型的指针； make 只能用于分配并初始化 slice、ma">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Golang 基础知识">
+<meta property="og:url" content="https://bigboss2063.github.io/post/53c12c48.html">
+<meta property="og:site_name" content="bigboss2063&#39;s blog">
+<meta property="og:description" content="&#x3D; 和 :&#x3D; 有什么区别？&#x3D; 用于给变量或常量赋值，而 :&#x3D; 用于定义并给变量赋值。 new 和 make 的区别是什么？ new 和 make 都用来分配内存，但 make 即分配内存也初始化内存，new 只将内存清 0，并不初始化内存； make 返回的是引用类型本身，而 new 返回的是指向类型的指针； make 只能用于分配并初始化 slice、ma">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2023-08-14T08:15:14.000Z">
+<meta property="article:modified_time" content="2023-08-14T08:16:11.122Z">
+<meta property="article:author" content="bigboss2063">
+<meta property="article:tag" content="Golang">
+<meta property="article:tag" content="面试题">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>Golang 基础知识</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="Top" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a href="/categories/">categories</a></li><!--
+     --><!--
+       --><li><a href="/tags/">tags</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/search/">Search</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="Previous post" href="/post/80a40d2a.html"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="Next post" href="/post/73f6d0aa.html"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="Back to top" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="Share post" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">Previous post</span>
+      <span id="i-next" class="info" style="display:none;">Next post</span>
+      <span id="i-top" class="info" style="display:none;">Back to top</span>
+      <span id="i-share" class="info" style="display:none;">Share post</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://bigboss2063.github.io/post/53c12c48.html"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://bigboss2063.github.io/post/53c12c48.html&text=Golang 基础知识"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://bigboss2063.github.io/post/53c12c48.html&title=Golang 基础知识"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://bigboss2063.github.io/post/53c12c48.html&is_video=false&description=Golang 基础知识"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=Golang 基础知识&body=Check out this article: https://bigboss2063.github.io/post/53c12c48.html"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://bigboss2063.github.io/post/53c12c48.html&title=Golang 基础知识"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://bigboss2063.github.io/post/53c12c48.html&title=Golang 基础知识"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://bigboss2063.github.io/post/53c12c48.html&title=Golang 基础知识"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://bigboss2063.github.io/post/53c12c48.html&title=Golang 基础知识"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://bigboss2063.github.io/post/53c12c48.html&name=Golang 基础知识&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://bigboss2063.github.io/post/53c12c48.html&t=Golang 基础知识"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    <div id="toc">
+      <ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#x3D-%E5%92%8C-x3D-%E6%9C%89%E4%BB%80%E4%B9%88%E5%8C%BA%E5%88%AB%EF%BC%9F"><span class="toc-number">1.</span> <span class="toc-text">&#x3D; 和 :&#x3D; 有什么区别？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#new-%E5%92%8C-make-%E7%9A%84%E5%8C%BA%E5%88%AB%E6%98%AF%E4%BB%80%E4%B9%88%EF%BC%9F"><span class="toc-number">2.</span> <span class="toc-text">new 和 make 的区别是什么？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Go-%E9%9D%A2%E5%90%91%E5%AF%B9%E8%B1%A1%E6%98%AF%E5%A6%82%E4%BD%95%E5%AE%9E%E7%8E%B0%E7%9A%84%EF%BC%9F"><span class="toc-number">3.</span> <span class="toc-text">Go 面向对象是如何实现的？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BA%8C%E7%BB%B4%E5%88%87%E7%89%87%E5%A6%82%E4%BD%95%E5%88%9D%E5%A7%8B%E5%8C%96%EF%BC%9F"><span class="toc-number">4.</span> <span class="toc-text">二维切片如何初始化？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#uint-%E7%B1%BB%E5%9E%8B%E5%8F%98%E9%87%8F%E5%88%86%E5%88%AB%E4%B8%BA-1%EF%BC%8C2%EF%BC%8C%E5%AE%83%E4%BB%AC%E7%9B%B8%E5%87%8F%E7%9A%84%E7%BB%93%E6%9E%9C%E6%98%AF%E5%A4%9A%E5%B0%91%EF%BC%9F"><span class="toc-number">5.</span> <span class="toc-text">uint 类型变量分别为 1，2，它们相减的结果是多少？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#go-%E6%9C%89%E6%B2%A1%E6%9C%89%E5%87%BD%E6%95%B0%E5%9C%A8-main-%E5%87%BD%E6%95%B0%E4%B9%8B%E5%89%8D%E6%89%A7%E8%A1%8C%EF%BC%9F%E6%80%8E%E4%B9%88%E7%94%A8%EF%BC%9F"><span class="toc-number">6.</span> <span class="toc-text">go 有没有函数在 main 函数之前执行？怎么用？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%A6%82%E4%BD%95%E7%9F%A5%E9%81%93%E4%B8%80%E4%B8%AA%E5%AF%B9%E8%B1%A1%E6%98%AF%E5%88%86%E9%85%8D%E5%9C%A8%E6%A0%88%E4%B8%8A%E8%BF%98%E6%98%AF%E5%A0%86%E4%B8%8A%EF%BC%9F"><span class="toc-number">7.</span> <span class="toc-text">如何知道一个对象是分配在栈上还是堆上？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9C%89%E4%BB%80%E4%B9%88%E6%9C%89%E6%97%B6%E5%80%99%E8%A6%81%E5%AE%9A%E4%B9%89%E4%B8%80%E4%B8%AA%E7%A9%BA%E5%80%BC%EF%BC%9F"><span class="toc-number">8.</span> <span class="toc-text">有什么有时候要定义一个空值？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BB%80%E4%B9%88%E6%98%AF-rune-%E7%B1%BB%E5%9E%8B%EF%BC%9F"><span class="toc-number">9.</span> <span class="toc-text">什么是 rune 类型？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%A6%82%E4%BD%95%E5%88%A4%E6%96%AD-map-%E4%B8%AD%E6%98%AF%E5%90%A6%E5%8C%85%E5%90%AB%E6%9F%90%E4%B8%AA-key%EF%BC%9F"><span class="toc-number">10.</span> <span class="toc-text">如何判断 map 中是否包含某个 key？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BB%80%E4%B9%88%E6%98%AF-Go-%E5%8D%8F%E7%A8%8B%EF%BC%88Goroutine%EF%BC%89%EF%BC%9F"><span class="toc-number">11.</span> <span class="toc-text">什么是 Go 协程（Goroutine）？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%A6%82%E4%BD%95%E9%AB%98%E6%95%88%E6%8B%BC%E6%8E%A5%E5%AD%97%E7%AC%A6%E4%B8%B2%EF%BC%9F"><span class="toc-number">12.</span> <span class="toc-text">如何高效拼接字符串？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#defer-%E7%9A%84%E6%89%A7%E8%A1%8C%E9%A1%BA%E5%BA%8F"><span class="toc-number">13.</span> <span class="toc-text">defer 的执行顺序</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Go-%E6%9C%89%E5%BC%82%E5%B8%B8%E7%B1%BB%E5%9E%8B%E5%90%97%EF%BC%9F"><span class="toc-number">14.</span> <span class="toc-text">Go 有异常类型吗？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Go-%E5%85%81%E8%AE%B8%E5%A4%9A%E4%B8%AA%E8%BF%94%E5%9B%9E%E5%80%BC%E5%90%97%EF%BC%9F"><span class="toc-number">15.</span> <span class="toc-text">Go 允许多个返回值吗？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%A6%82%E4%BD%95%E5%88%A4%E6%96%AD%E4%B8%A4%E4%B8%AA%E5%AD%97%E7%AC%A6%E4%B8%B2%E5%88%87%E7%89%87%E6%98%AF%E7%9B%B8%E7%AD%89%E7%9A%84%EF%BC%9F"><span class="toc-number">16.</span> <span class="toc-text">如何判断两个字符串切片是相等的？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%89%93%E5%8D%B0%E5%AD%97%E7%AC%A6%E4%B8%B2%E6%97%B6%EF%BC%8C-v-%E5%92%8C-v-%E7%9A%84%E5%8C%BA%E5%88%AB%EF%BC%9F"><span class="toc-number">17.</span> <span class="toc-text">打印字符串时，%v 和 %+v 的区别？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Go-%E8%AF%AD%E8%A8%80%E5%A6%82%E4%BD%95%E8%A1%A8%E7%A4%BA%E6%9E%9A%E4%B8%BE%EF%BC%9F"><span class="toc-number">18.</span> <span class="toc-text">Go 语言如何表示枚举？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%A9%BA%E7%BB%93%E6%9E%84%E4%BD%93%E7%9A%84%E4%BD%9C%E7%94%A8%E6%98%AF%E4%BB%80%E4%B9%88%EF%BC%9F"><span class="toc-number">19.</span> <span class="toc-text">空结构体的作用是什么？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Go-%E8%AF%AD%E8%A8%80%E4%B8%AD-int-%E5%92%8C-int32-%E6%98%AF%E4%B8%80%E4%B8%AA%E6%A6%82%E5%BF%B5%E5%90%97%EF%BC%9F"><span class="toc-number">20.</span> <span class="toc-text">Go 语言中 int 和 int32 是一个概念吗？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Go-%E8%AF%AD%E8%A8%80%E4%B8%AD-interface-%E5%8F%AF%E4%BB%A5%E6%AF%94%E8%BE%83%E5%90%97%EF%BC%9F"><span class="toc-number">21.</span> <span class="toc-text">Go 语言中 interface 可以比较吗？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Go-%E8%AF%AD%E8%A8%80%E4%B8%AD-nil-%E5%8F%AF%E4%BB%A5%E6%AF%94%E8%BE%83%E5%90%97%EF%BC%9F"><span class="toc-number">22.</span> <span class="toc-text">Go 语言中 nil 可以比较吗？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Go-%E8%AF%AD%E8%A8%80%E5%87%BD%E6%95%B0%E8%BF%94%E5%9B%9E%E5%B1%80%E9%83%A8%E5%8F%98%E9%87%8F%E7%9A%84%E6%8C%87%E9%92%88%E6%98%AF%E5%90%A6%E5%AE%89%E5%85%A8%EF%BC%9F"><span class="toc-number">23.</span> <span class="toc-text">Go 语言函数返回局部变量的指针是否安全？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%9D%9E%E6%8E%A5%E5%8F%A3%E7%9A%84%E4%BB%BB%E6%84%8F%E7%B1%BB%E5%9E%8B-T-%E9%83%BD%E8%83%BD%E5%A4%9F%E8%B0%83%E7%94%A8-T-%E7%9A%84%E6%96%B9%E6%B3%95%E5%90%97%EF%BC%9F%E5%8F%8D%E8%BF%87%E6%9D%A5%E5%91%A2%EF%BC%9F"><span class="toc-number">24.</span> <span class="toc-text">非接口的任意类型 T 都能够调用 *T 的方法吗？反过来呢？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Go-slice-%E6%98%AF%E5%A6%82%E4%BD%95%E6%89%A9%E5%AE%B9%E7%9A%84%EF%BC%9F"><span class="toc-number">25.</span> <span class="toc-text">Go slice 是如何扩容的？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%97%A0%E7%BC%93%E5%86%B2%E7%9A%84-chan-%E5%92%8C%E6%9C%89%E7%BC%93%E5%86%B2%E7%9A%84-chan-%E6%9C%89%E4%BB%80%E4%B9%88%E5%8C%BA%E5%88%AB%EF%BC%9F"><span class="toc-number">26.</span> <span class="toc-text">无缓冲的 chan 和有缓冲的 chan 有什么区别？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E6%9C%89%E5%8D%8F%E7%A8%8B%E6%B3%84%E9%9C%B2%EF%BC%9F"><span class="toc-number">27.</span> <span class="toc-text">为什么有协程泄露？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B8%B8%E8%A7%81%E7%9A%84-Goroutine-%E6%93%8D%E4%BD%9C%E5%87%BD%E6%95%B0%E6%9C%89%E5%93%AA%E4%BA%9B%EF%BC%9F"><span class="toc-number">28.</span> <span class="toc-text">常见的 Goroutine 操作函数有哪些？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BB%80%E4%B9%88%E6%98%AF-Go-%E7%AB%9E%E6%80%81%EF%BC%9F"><span class="toc-number">29.</span> <span class="toc-text">什么是 Go 竞态？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#defer-%E5%8F%AF%E4%BB%A5%E6%8D%95%E8%8E%B7-goroutine-%E7%9A%84%E5%AD%90-goroutine-%E5%90%97%EF%BC%9F"><span class="toc-number">30.</span> <span class="toc-text">defer 可以捕获 goroutine 的子 goroutine 吗？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%A6%82%E6%9E%9C%E8%8B%A5%E5%B9%B2%E4%B8%AAgoroutine%EF%BC%8C%E6%9C%89%E4%B8%80%E4%B8%AApanic%E4%BC%9A%E6%80%8E%E4%B9%88%E5%81%9A%EF%BC%9F"><span class="toc-number">31.</span> <span class="toc-text">如果若干个goroutine，有一个panic会怎么做？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#gRPC-%E6%98%AF%E4%BB%80%E4%B9%88%EF%BC%9F"><span class="toc-number">32.</span> <span class="toc-text">gRPC 是什么？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Go-%E6%98%AF%E5%A6%82%E4%BD%95%E8%A7%A3%E6%9E%90-Tag-%E7%9A%84%EF%BC%9F"><span class="toc-number">33.</span> <span class="toc-text">Go 是如何解析 Tag 的？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Go-%E9%A1%B9%E7%9B%AE%E5%A6%82%E4%BD%95%E4%BC%98%E9%9B%85%E7%9A%84%E5%90%AF%E5%81%9C%EF%BC%9F"><span class="toc-number">34.</span> <span class="toc-text">Go 项目如何优雅的启停？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#channel-%E6%AD%BB%E9%94%81%E7%9A%84%E5%9C%BA%E6%99%AF"><span class="toc-number">35.</span> <span class="toc-text">channel 死锁的场景</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#atomic-%E5%BA%95%E5%B1%82%E6%98%AF%E6%80%8E%E4%B9%88%E5%AE%9E%E7%8E%B0%E7%9A%84%EF%BC%9F"><span class="toc-number">36.</span> <span class="toc-text">atomic 底层是怎么实现的？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Go-%E7%9A%84%E8%B0%83%E8%AF%95-x2F-%E5%88%86%E6%9E%90%E5%B7%A5%E5%85%B7%E7%94%A8%E8%BF%87%E5%93%AA%E4%BA%9B%EF%BC%9F"><span class="toc-number">37.</span> <span class="toc-text">Go 的调试&#x2F;分析工具用过哪些？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BF%9B%E7%A8%8B%E8%A2%AB-kill%EF%BC%8C%E5%A6%82%E4%BD%95%E4%BF%9D%E8%AF%81%E6%89%80%E6%9C%89-goroutine-%E9%A1%BA%E5%88%A9%E9%80%80%E5%87%BA%EF%BC%9F"><span class="toc-number">38.</span> <span class="toc-text">进程被 kill，如何保证所有 goroutine 顺利退出？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%AF%B4%E8%AF%B4-context-%E5%8C%85%E7%9A%84%E4%BD%9C%E7%94%A8%EF%BC%9F"><span class="toc-number">39.</span> <span class="toc-text">说说 context 包的作用？</span></a></li></ol>
+    </div>
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        Golang 基础知识
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">bigboss2063</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2023-08-14T08:15:14.000Z" class="dt-published" itemprop="datePublished">2023-08-14</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fa-solid fa-archive"></i>
+        <a class="category-link" href="/categories/%E9%9D%A2%E8%AF%95%E9%A2%98/">面试题</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/Golang/" rel="tag">Golang</a>, <a class="p-category" href="/tags/%E9%9D%A2%E8%AF%95%E9%A2%98/" rel="tag">面试题</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h3 id="x3D-和-x3D-有什么区别？"><a href="#x3D-和-x3D-有什么区别？" class="headerlink" title="&#x3D; 和 :&#x3D; 有什么区别？"></a>&#x3D; 和 :&#x3D; 有什么区别？</h3><p>&#x3D; 用于给变量或常量赋值，而 :&#x3D; 用于定义并给变量赋值。</p>
+<h3 id="new-和-make-的区别是什么？"><a href="#new-和-make-的区别是什么？" class="headerlink" title="new 和 make 的区别是什么？"></a>new 和 make 的区别是什么？</h3><ul>
+<li>new 和 make 都用来分配内存，但 make 即分配内存也初始化内存，new 只将内存清 0，并不初始化内存；</li>
+<li>make 返回的是引用类型本身，而 new 返回的是指向类型的指针；</li>
+<li>make 只能用于分配并初始化 slice、map、chan 类型的数据，而 slice 可以给任何类型的数据分配内存。</li>
+</ul>
+<h3 id="Go-面向对象是如何实现的？"><a href="#Go-面向对象是如何实现的？" class="headerlink" title="Go 面向对象是如何实现的？"></a>Go 面向对象是如何实现的？</h3><p>面向对象即封装、继承、多态。</p>
+<p>封装：对于同一个包，对象等对包内可见，而要对包外可见则需要将对象以大写开头；</p>
+<p>继承：Go 以嵌套来实现继承，也就是在 struct 中加入需要继承的类；</p>
+<p>多态：Go 的多态通过接口来实现，某个类型的实例可以赋给它所实现的任意接口类型的变量。</p>
+<h3 id="二维切片如何初始化？"><a href="#二维切片如何初始化？" class="headerlink" title="二维切片如何初始化？"></a>二维切片如何初始化？</h3><p>先用 make 初始化一个二维数组，再遍历这个二维数组使用 make 初始化里面的一维数组。</p>
+<h3 id="uint-类型变量分别为-1，2，它们相减的结果是多少？"><a href="#uint-类型变量分别为-1，2，它们相减的结果是多少？" class="headerlink" title="uint 类型变量分别为 1，2，它们相减的结果是多少？"></a>uint 类型变量分别为 1，2，它们相减的结果是多少？</h3><p>由于 uint 类型不能为复制，所以会溢出，在 32 位系统上结果为 2^32-1，在 64 位系统上为 2^64-1。</p>
+<h3 id="go-有没有函数在-main-函数之前执行？怎么用？"><a href="#go-有没有函数在-main-函数之前执行？怎么用？" class="headerlink" title="go 有没有函数在 main 函数之前执行？怎么用？"></a>go 有没有函数在 main 函数之前执行？怎么用？</h3><p>init 函数会在 main 函数之前执行。</p>
+<p>init 函数一个包中可以有多个，一个文件中也可以有多个。</p>
+<p>在同一个包中执行顺序并不确定，不应该依赖 init 函数的执行顺序。</p>
+<p>在不同包中，按照依赖关系来决定执行顺序。</p>
+<p>init 函数在 runtime 导入包后，并初始化全局常量和全局变量之后，在 main 函数之前执行。</p>
+<h3 id="如何知道一个对象是分配在栈上还是堆上？"><a href="#如何知道一个对象是分配在栈上还是堆上？" class="headerlink" title="如何知道一个对象是分配在栈上还是堆上？"></a>如何知道一个对象是分配在栈上还是堆上？</h3><p>即是否会发生逃逸。如果一个对象的大小无法在分配的时候确定，或它的作用域在函数结束了还没结束，那么它会被分配到堆上，否则分配到站上。</p>
+<h3 id="有什么有时候要定义一个空值？"><a href="#有什么有时候要定义一个空值？" class="headerlink" title="有什么有时候要定义一个空值？"></a>有什么有时候要定义一个空值？</h3><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> _ Codec = (*GobCodec)(<span class="literal">nil</span>)</span><br></pre></td></tr></table></figure>
+
+<p>将 nil 转化成一个具体类型，再转化为一个接口类型，如果失败了说明该具体类型没有实现该接口类型的所有方法。</p>
+<h3 id="什么是-rune-类型？"><a href="#什么是-rune-类型？" class="headerlink" title="什么是 rune 类型？"></a>什么是 rune 类型？</h3><p>Go 中的 rune 其实就是 int32 的别名，用于表示 Unicode 中的字符。但是 Go 的字符串底层表示是字节序列，而不是 rune 类型。</p>
+<h3 id="如何判断-map-中是否包含某个-key？"><a href="#如何判断-map-中是否包含某个-key？" class="headerlink" title="如何判断 map 中是否包含某个 key？"></a>如何判断 map 中是否包含某个 key？</h3><p>map 会返回两个参数，第二个参数就是这个 key 是否存在。</p>
+<h3 id="什么是-Go-协程（Goroutine）？"><a href="#什么是-Go-协程（Goroutine）？" class="headerlink" title="什么是 Go 协程（Goroutine）？"></a>什么是 Go 协程（Goroutine）？</h3><p>协程即用户态轻量级协程，是线程的基本调度单位，在函数前加上 go 关键字就能实现并发。一个 go 协程的大小很小，因此可以轻易实现成千上万个协程同时启动。</p>
+<h3 id="如何高效拼接字符串？"><a href="#如何高效拼接字符串？" class="headerlink" title="如何高效拼接字符串？"></a>如何高效拼接字符串？</h3><ul>
+<li>“+” 会对字符进行遍历，并开辟新的空间；</li>
+<li>fmt.Sprintf 额外存在反射的性能损耗；</li>
+<li>strings.Builder 底层使用 unsafe 直接把字节数组强制转为 string，避免了拷贝和分配新空间的开销；</li>
+<li>bytes.Buffer 和 strings.Builder 类似，但是在将字节数组转化为 string 时使用了标准类型，多了内存分配的开销；</li>
+<li>strings.Join 是基于 strings.Builder 实现的，但在内部调用了 b.Grow(n)，提前进行了分配，避免了后续扩容的开销。</li>
+</ul>
+<p>得出结论：strings.Join ≈ strings.Builder &gt; bytes.Buffer &gt; + &gt; fmt.Sprintf。</p>
+<h3 id="defer-的执行顺序"><a href="#defer-的执行顺序" class="headerlink" title="defer 的执行顺序"></a>defer 的执行顺序</h3><p>defer 按照声明的顺序逆序执行，因为 defer 是注册在 Goroutine 上的结构体，以头插法维护一个链表，所以顺序遍历这个 defer 链表时自然就和插入顺序相反。</p>
+<h3 id="Go-有异常类型吗？"><a href="#Go-有异常类型吗？" class="headerlink" title="Go 有异常类型吗？"></a>Go 有异常类型吗？</h3><p>没有，只有错误类型 Error。</p>
+<h3 id="Go-允许多个返回值吗？"><a href="#Go-允许多个返回值吗？" class="headerlink" title="Go 允许多个返回值吗？"></a>Go 允许多个返回值吗？</h3><p>允许。</p>
+<h3 id="如何判断两个字符串切片是相等的？"><a href="#如何判断两个字符串切片是相等的？" class="headerlink" title="如何判断两个字符串切片是相等的？"></a>如何判断两个字符串切片是相等的？</h3><p>使用反射包中的 reflect.DeepEqual(a, b) 来判断，但是性能非常差。</p>
+<p>推荐使用遍历切片中的元素来比较。</p>
+<h3 id="打印字符串时，-v-和-v-的区别？"><a href="#打印字符串时，-v-和-v-的区别？" class="headerlink" title="打印字符串时，%v 和 %+v 的区别？"></a>打印字符串时，%v 和 %+v 的区别？</h3><p>%v 打印 struct 的值，而 %+v 还会打印出 struct 字段的名称。</p>
+<h3 id="Go-语言如何表示枚举？"><a href="#Go-语言如何表示枚举？" class="headerlink" title="Go 语言如何表示枚举？"></a>Go 语言如何表示枚举？</h3><p>iota。</p>
+<h3 id="空结构体的作用是什么？"><a href="#空结构体的作用是什么？" class="headerlink" title="空结构体的作用是什么？"></a>空结构体的作用是什么？</h3><p>Go 语言对空结构体做了特别的优化，使得它完全不占用内存，可以用于作占位符。</p>
+<p>比如可以用空结构体实现 Set 数据结构，再或者使用空结构体类型的 chan，来节省空间，也可以用于申明仅包含方法的结构体。</p>
+<h3 id="Go-语言中-int-和-int32-是一个概念吗？"><a href="#Go-语言中-int-和-int32-是一个概念吗？" class="headerlink" title="Go 语言中 int 和 int32 是一个概念吗？"></a>Go 语言中 int 和 int32 是一个概念吗？</h3><p>不是，跟操作系统是多少位有关。</p>
+<h3 id="Go-语言中-interface-可以比较吗？"><a href="#Go-语言中-interface-可以比较吗？" class="headerlink" title="Go 语言中 interface 可以比较吗？"></a>Go 语言中 interface 可以比较吗？</h3><p>可以。interface 内部实现中包含了 2 个字段，类型 T 和值 V，可以直接使用 &#x3D;&#x3D; 或 !&#x3D; 比较。interface 相等有两种情况：</p>
+<ol>
+<li>都为 nil；</li>
+<li>T 和 V 都相等。</li>
+</ol>
+<h3 id="Go-语言中-nil-可以比较吗？"><a href="#Go-语言中-nil-可以比较吗？" class="headerlink" title="Go 语言中 nil 可以比较吗？"></a>Go 语言中 nil 可以比较吗？</h3><p>可以，只有同样类型的 nil 才相等。</p>
+<h3 id="Go-语言函数返回局部变量的指针是否安全？"><a href="#Go-语言函数返回局部变量的指针是否安全？" class="headerlink" title="Go 语言函数返回局部变量的指针是否安全？"></a>Go 语言函数返回局部变量的指针是否安全？</h3><p>安全，因为 Go 会进行逃逸分析，如果局部变量的指针被返回，即作用域超出函数，则会把它分配到堆上。</p>
+<h3 id="非接口的任意类型-T-都能够调用-T-的方法吗？反过来呢？"><a href="#非接口的任意类型-T-都能够调用-T-的方法吗？反过来呢？" class="headerlink" title="非接口的任意类型 T 都能够调用 *T 的方法吗？反过来呢？"></a>非接口的任意类型 T 都能够调用 *T 的方法吗？反过来呢？</h3><p>一个 T 类型的值想要调用 *T 类型声明的方法，当且仅当 T 是可寻址的。而由于 *T 是可以解引用的，所以它可以调用 T 类型声明的方法。</p>
+<h3 id="Go-slice-是如何扩容的？"><a href="#Go-slice-是如何扩容的？" class="headerlink" title="Go slice 是如何扩容的？"></a>Go slice 是如何扩容的？</h3><p>在 go 1.18 之前当 slice 的容量小于 1024 的时候，成倍增长，而当 slice 容量大于 1024 的时候以 1.25 的倍率增长。</p>
+<p>但是在 go 1.18 时，这个阈值变成了 256。扩容的逻辑也有所变化：</p>
+<ol>
+<li>如果期望的容量比原容量的两倍还大，那么新容量直接等于期望的容量；</li>
+<li>否则如果原容量小于 256，那么新容量就等于两倍的原容量；</li>
+<li>如果原来大于等于 256，那么循环增加 1.25 倍加上 192，直到满足新容量。</li>
+</ol>
+<p>接着会通过 growslice 函数传入的切片的类型元数据来进行内存对齐。</p>
+<h3 id="无缓冲的-chan-和有缓冲的-chan-有什么区别？"><a href="#无缓冲的-chan-和有缓冲的-chan-有什么区别？" class="headerlink" title="无缓冲的 chan 和有缓冲的 chan 有什么区别？"></a>无缓冲的 chan 和有缓冲的 chan 有什么区别？</h3><p>是否有缓冲区决定了是否会阻塞。</p>
+<h3 id="为什么有协程泄露？"><a href="#为什么有协程泄露？" class="headerlink" title="为什么有协程泄露？"></a>为什么有协程泄露？</h3><p>可能有以下几种原因：</p>
+<ul>
+<li>goroutine 被 chan 阻塞，无法退出；</li>
+<li>goroutine 进入死循环。</li>
+</ul>
+<p>要避免协程泄露，就要在创建协程的时候就考虑如何终止协程，可以为协程添加一个 for select 来通知协程退出。可以添加一个空结构体类型的 chan 来发送通知，也可以直接关闭发送消息的 chan。</p>
+<h3 id="常见的-Goroutine-操作函数有哪些？"><a href="#常见的-Goroutine-操作函数有哪些？" class="headerlink" title="常见的 Goroutine 操作函数有哪些？"></a>常见的 Goroutine 操作函数有哪些？</h3><ul>
+<li>runtime.GOMAXPROCS(num int)：可以用于设置线程数目，默认值为 CPU 逻辑核数，如果设置的过大会引起频繁的性能切换，降低性能；</li>
+<li>runtime.Gosched()：让当前 goroutine 让出 CPU 时间片；</li>
+<li>runtime.Goexit()：让当前 goroutine 运行终止，并且会执行 defer，在主协程中调用该函数会引起 panic。</li>
+</ul>
+<h3 id="什么是-Go-竞态？"><a href="#什么是-Go-竞态？" class="headerlink" title="什么是 Go 竞态？"></a>什么是 Go 竞态？</h3><p>所谓的竞态（race condition）就是多个 goroutine 同时访问相同的资源，我们可以对临界区加锁或使用原子操作来解决竞态，原子操作的开销比加锁要小。</p>
+<h3 id="defer-可以捕获-goroutine-的子-goroutine-吗？"><a href="#defer-可以捕获-goroutine-的子-goroutine-吗？" class="headerlink" title="defer 可以捕获 goroutine 的子 goroutine 吗？"></a>defer 可以捕获 goroutine 的子 goroutine 吗？</h3><p>不可以，defer 仅在当前的 goroutine 中生效，不会跨 goroutine 影响其它 goroutine 的执行。</p>
+<h3 id="如果若干个goroutine，有一个panic会怎么做？"><a href="#如果若干个goroutine，有一个panic会怎么做？" class="headerlink" title="如果若干个goroutine，有一个panic会怎么做？"></a>如果若干个goroutine，有一个panic会怎么做？</h3><p>一个 goroutine 发生了 panic 只会终止自己，不会影响其它 goroutine，但如果该发生 panic 的协程没有 recover，整个程序都会退出，所以子 goroutine 中最好使用 recover 来处理 panic。</p>
+<h3 id="gRPC-是什么？"><a href="#gRPC-是什么？" class="headerlink" title="gRPC 是什么？"></a>gRPC 是什么？</h3><p>gRPC 并不是指的 golang rpc，而是 google rpc，是谷歌开源的强大的远程调用库。rpc 也就是远程过程调用，可以调用远程函数就像调用本地函数一样。</p>
+<p>grpc 使用 protobuf 作为接口定义语言，同时底层的消息交换格式也是 protobuf。</p>
+<p>grpc 通信基本流程：</p>
+<ol>
+<li>先定义 IDL，即后缀为 .proto 的接口文档；</li>
+<li>编译 proto 文件，得到存根文件；</li>
+<li>服务端定义接口并启动，这些接口定义在存根文件里；</li>
+<li>客户端借助存根文件调用服务端的函数。</li>
+</ol>
+<p>grpc 是跨平台跨语言的。</p>
+<h3 id="Go-是如何解析-Tag-的？"><a href="#Go-是如何解析-Tag-的？" class="headerlink" title="Go 是如何解析 Tag 的？"></a>Go 是如何解析 Tag 的？</h3><p>要采用反射的方式来解析 Tag，通过 reflect.ValueOf 方法获取反射值，获取 Type 属性，再用 Field(i) 获取需要解析 tag 的 field，通过.Tag() 来获取 tag。</p>
+<h3 id="Go-项目如何优雅的启停？"><a href="#Go-项目如何优雅的启停？" class="headerlink" title="Go 项目如何优雅的启停？"></a>Go 项目如何优雅的启停？</h3><p>所谓优雅的启停要符合以下几个条件：</p>
+<ul>
+<li>不可以关闭现有连接；</li>
+<li>启动新的进程来接管旧进程；</li>
+<li>继续响应用户请求，不能出现拒绝请求的情况；</li>
+<li>旧进程处理完旧请求之后再退出，新的请求由新的进程来处理。</li>
+</ul>
+<p>通过监听信号来实现：</p>
+<p>启动：</p>
+<ul>
+<li>监听 SIGHUP 信号；</li>
+<li>收到信号后将服务监听的文件描述符传递给新的子进程，新老进程同时接受请求。</li>
+</ul>
+<p>退出：</p>
+<ul>
+<li>监听 SIGINT，SIGSTP，SIGQUIT 等信号；</li>
+<li>接收到信号后，父进程停止接收新请求，等待旧请求完成或超时；</li>
+<li>父进程退出。</li>
+</ul>
+<h3 id="channel-死锁的场景"><a href="#channel-死锁的场景" class="headerlink" title="channel 死锁的场景"></a>channel 死锁的场景</h3><ul>
+<li>channel 中没有数据，直接读取会死锁。通过用 select 语句，加上 default 来处理没有数据的情况；</li>
+<li>channel 缓冲区已满，再次写入会死锁。通过 select 语句，加上 default 来处理缓冲区满的情况；</li>
+<li>向一个已经关闭的 channel 中写数据会造成 panic，但如果 channel 里还有未读取的数据是可以正常读取的，第二个返回值为 true，没数据了会返回空值，第二个返回值为 false。</li>
+</ul>
+<h3 id="atomic-底层是怎么实现的？"><a href="#atomic-底层是怎么实现的？" class="headerlink" title="atomic 底层是怎么实现的？"></a>atomic 底层是怎么实现的？</h3><p>atomic 采用 CAS 指令实现，CAS 指令是 CPU 提供的原子性操作指令。CAS 操作不需要加锁，总是假设被操作的值未曾改变，一旦这个假设成立就立即进行替换，即 Compare and Swap。CAS 需要不断占用 CPU 资源来避免加锁的开销。</p>
+<h3 id="Go-的调试-x2F-分析工具用过哪些？"><a href="#Go-的调试-x2F-分析工具用过哪些？" class="headerlink" title="Go 的调试&#x2F;分析工具用过哪些？"></a>Go 的调试&#x2F;分析工具用过哪些？</h3><ul>
+<li>go cover：测试代码覆盖率；</li>
+<li>godoc：用于生成 go 文档；</li>
+<li>pprof：用于性能调优，针对 cpu、内存和并发；</li>
+<li>-race：用于检测竞态；</li>
+</ul>
+<h3 id="进程被-kill，如何保证所有-goroutine-顺利退出？"><a href="#进程被-kill，如何保证所有-goroutine-顺利退出？" class="headerlink" title="进程被 kill，如何保证所有 goroutine 顺利退出？"></a>进程被 kill，如何保证所有 goroutine 顺利退出？</h3><p>goroutine 需要监听 SIGKILL 信号，接收到该信号之后就退出，可以用 select 语句。</p>
+<h3 id="说说-context-包的作用？"><a href="#说说-context-包的作用？" class="headerlink" title="说说 context 包的作用？"></a>说说 context 包的作用？</h3><p>context 用于在 goroutine 之间传递上下文，可以同步特定的数据、取消信号以及处理请求的截止时间等。</p>
+
+  </div>
+</article>
+
+
+    <div class="blog-post-comments">
+        <div id="utterances_thread">
+            <noscript>Please enable JavaScript to view the comments.</noscript>
+        </div>
+    </div>
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">Home</a></li>
+        
+          <li><a href="/archives/">Writing</a></li>
+        
+          <li><a href="/categories/">categories</a></li>
+        
+          <li><a href="/tags/">tags</a></li>
+        
+          <li><a href="/about/">About</a></li>
+        
+          <li><a href="/search/">Search</a></li>
+        
+      </ul>
+    </div>
+
+    <div id="toc-footer" style="display: none">
+      <ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#x3D-%E5%92%8C-x3D-%E6%9C%89%E4%BB%80%E4%B9%88%E5%8C%BA%E5%88%AB%EF%BC%9F"><span class="toc-number">1.</span> <span class="toc-text">&#x3D; 和 :&#x3D; 有什么区别？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#new-%E5%92%8C-make-%E7%9A%84%E5%8C%BA%E5%88%AB%E6%98%AF%E4%BB%80%E4%B9%88%EF%BC%9F"><span class="toc-number">2.</span> <span class="toc-text">new 和 make 的区别是什么？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Go-%E9%9D%A2%E5%90%91%E5%AF%B9%E8%B1%A1%E6%98%AF%E5%A6%82%E4%BD%95%E5%AE%9E%E7%8E%B0%E7%9A%84%EF%BC%9F"><span class="toc-number">3.</span> <span class="toc-text">Go 面向对象是如何实现的？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BA%8C%E7%BB%B4%E5%88%87%E7%89%87%E5%A6%82%E4%BD%95%E5%88%9D%E5%A7%8B%E5%8C%96%EF%BC%9F"><span class="toc-number">4.</span> <span class="toc-text">二维切片如何初始化？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#uint-%E7%B1%BB%E5%9E%8B%E5%8F%98%E9%87%8F%E5%88%86%E5%88%AB%E4%B8%BA-1%EF%BC%8C2%EF%BC%8C%E5%AE%83%E4%BB%AC%E7%9B%B8%E5%87%8F%E7%9A%84%E7%BB%93%E6%9E%9C%E6%98%AF%E5%A4%9A%E5%B0%91%EF%BC%9F"><span class="toc-number">5.</span> <span class="toc-text">uint 类型变量分别为 1，2，它们相减的结果是多少？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#go-%E6%9C%89%E6%B2%A1%E6%9C%89%E5%87%BD%E6%95%B0%E5%9C%A8-main-%E5%87%BD%E6%95%B0%E4%B9%8B%E5%89%8D%E6%89%A7%E8%A1%8C%EF%BC%9F%E6%80%8E%E4%B9%88%E7%94%A8%EF%BC%9F"><span class="toc-number">6.</span> <span class="toc-text">go 有没有函数在 main 函数之前执行？怎么用？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%A6%82%E4%BD%95%E7%9F%A5%E9%81%93%E4%B8%80%E4%B8%AA%E5%AF%B9%E8%B1%A1%E6%98%AF%E5%88%86%E9%85%8D%E5%9C%A8%E6%A0%88%E4%B8%8A%E8%BF%98%E6%98%AF%E5%A0%86%E4%B8%8A%EF%BC%9F"><span class="toc-number">7.</span> <span class="toc-text">如何知道一个对象是分配在栈上还是堆上？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9C%89%E4%BB%80%E4%B9%88%E6%9C%89%E6%97%B6%E5%80%99%E8%A6%81%E5%AE%9A%E4%B9%89%E4%B8%80%E4%B8%AA%E7%A9%BA%E5%80%BC%EF%BC%9F"><span class="toc-number">8.</span> <span class="toc-text">有什么有时候要定义一个空值？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BB%80%E4%B9%88%E6%98%AF-rune-%E7%B1%BB%E5%9E%8B%EF%BC%9F"><span class="toc-number">9.</span> <span class="toc-text">什么是 rune 类型？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%A6%82%E4%BD%95%E5%88%A4%E6%96%AD-map-%E4%B8%AD%E6%98%AF%E5%90%A6%E5%8C%85%E5%90%AB%E6%9F%90%E4%B8%AA-key%EF%BC%9F"><span class="toc-number">10.</span> <span class="toc-text">如何判断 map 中是否包含某个 key？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BB%80%E4%B9%88%E6%98%AF-Go-%E5%8D%8F%E7%A8%8B%EF%BC%88Goroutine%EF%BC%89%EF%BC%9F"><span class="toc-number">11.</span> <span class="toc-text">什么是 Go 协程（Goroutine）？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%A6%82%E4%BD%95%E9%AB%98%E6%95%88%E6%8B%BC%E6%8E%A5%E5%AD%97%E7%AC%A6%E4%B8%B2%EF%BC%9F"><span class="toc-number">12.</span> <span class="toc-text">如何高效拼接字符串？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#defer-%E7%9A%84%E6%89%A7%E8%A1%8C%E9%A1%BA%E5%BA%8F"><span class="toc-number">13.</span> <span class="toc-text">defer 的执行顺序</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Go-%E6%9C%89%E5%BC%82%E5%B8%B8%E7%B1%BB%E5%9E%8B%E5%90%97%EF%BC%9F"><span class="toc-number">14.</span> <span class="toc-text">Go 有异常类型吗？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Go-%E5%85%81%E8%AE%B8%E5%A4%9A%E4%B8%AA%E8%BF%94%E5%9B%9E%E5%80%BC%E5%90%97%EF%BC%9F"><span class="toc-number">15.</span> <span class="toc-text">Go 允许多个返回值吗？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%A6%82%E4%BD%95%E5%88%A4%E6%96%AD%E4%B8%A4%E4%B8%AA%E5%AD%97%E7%AC%A6%E4%B8%B2%E5%88%87%E7%89%87%E6%98%AF%E7%9B%B8%E7%AD%89%E7%9A%84%EF%BC%9F"><span class="toc-number">16.</span> <span class="toc-text">如何判断两个字符串切片是相等的？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%89%93%E5%8D%B0%E5%AD%97%E7%AC%A6%E4%B8%B2%E6%97%B6%EF%BC%8C-v-%E5%92%8C-v-%E7%9A%84%E5%8C%BA%E5%88%AB%EF%BC%9F"><span class="toc-number">17.</span> <span class="toc-text">打印字符串时，%v 和 %+v 的区别？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Go-%E8%AF%AD%E8%A8%80%E5%A6%82%E4%BD%95%E8%A1%A8%E7%A4%BA%E6%9E%9A%E4%B8%BE%EF%BC%9F"><span class="toc-number">18.</span> <span class="toc-text">Go 语言如何表示枚举？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%A9%BA%E7%BB%93%E6%9E%84%E4%BD%93%E7%9A%84%E4%BD%9C%E7%94%A8%E6%98%AF%E4%BB%80%E4%B9%88%EF%BC%9F"><span class="toc-number">19.</span> <span class="toc-text">空结构体的作用是什么？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Go-%E8%AF%AD%E8%A8%80%E4%B8%AD-int-%E5%92%8C-int32-%E6%98%AF%E4%B8%80%E4%B8%AA%E6%A6%82%E5%BF%B5%E5%90%97%EF%BC%9F"><span class="toc-number">20.</span> <span class="toc-text">Go 语言中 int 和 int32 是一个概念吗？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Go-%E8%AF%AD%E8%A8%80%E4%B8%AD-interface-%E5%8F%AF%E4%BB%A5%E6%AF%94%E8%BE%83%E5%90%97%EF%BC%9F"><span class="toc-number">21.</span> <span class="toc-text">Go 语言中 interface 可以比较吗？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Go-%E8%AF%AD%E8%A8%80%E4%B8%AD-nil-%E5%8F%AF%E4%BB%A5%E6%AF%94%E8%BE%83%E5%90%97%EF%BC%9F"><span class="toc-number">22.</span> <span class="toc-text">Go 语言中 nil 可以比较吗？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Go-%E8%AF%AD%E8%A8%80%E5%87%BD%E6%95%B0%E8%BF%94%E5%9B%9E%E5%B1%80%E9%83%A8%E5%8F%98%E9%87%8F%E7%9A%84%E6%8C%87%E9%92%88%E6%98%AF%E5%90%A6%E5%AE%89%E5%85%A8%EF%BC%9F"><span class="toc-number">23.</span> <span class="toc-text">Go 语言函数返回局部变量的指针是否安全？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%9D%9E%E6%8E%A5%E5%8F%A3%E7%9A%84%E4%BB%BB%E6%84%8F%E7%B1%BB%E5%9E%8B-T-%E9%83%BD%E8%83%BD%E5%A4%9F%E8%B0%83%E7%94%A8-T-%E7%9A%84%E6%96%B9%E6%B3%95%E5%90%97%EF%BC%9F%E5%8F%8D%E8%BF%87%E6%9D%A5%E5%91%A2%EF%BC%9F"><span class="toc-number">24.</span> <span class="toc-text">非接口的任意类型 T 都能够调用 *T 的方法吗？反过来呢？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Go-slice-%E6%98%AF%E5%A6%82%E4%BD%95%E6%89%A9%E5%AE%B9%E7%9A%84%EF%BC%9F"><span class="toc-number">25.</span> <span class="toc-text">Go slice 是如何扩容的？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%97%A0%E7%BC%93%E5%86%B2%E7%9A%84-chan-%E5%92%8C%E6%9C%89%E7%BC%93%E5%86%B2%E7%9A%84-chan-%E6%9C%89%E4%BB%80%E4%B9%88%E5%8C%BA%E5%88%AB%EF%BC%9F"><span class="toc-number">26.</span> <span class="toc-text">无缓冲的 chan 和有缓冲的 chan 有什么区别？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E6%9C%89%E5%8D%8F%E7%A8%8B%E6%B3%84%E9%9C%B2%EF%BC%9F"><span class="toc-number">27.</span> <span class="toc-text">为什么有协程泄露？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B8%B8%E8%A7%81%E7%9A%84-Goroutine-%E6%93%8D%E4%BD%9C%E5%87%BD%E6%95%B0%E6%9C%89%E5%93%AA%E4%BA%9B%EF%BC%9F"><span class="toc-number">28.</span> <span class="toc-text">常见的 Goroutine 操作函数有哪些？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BB%80%E4%B9%88%E6%98%AF-Go-%E7%AB%9E%E6%80%81%EF%BC%9F"><span class="toc-number">29.</span> <span class="toc-text">什么是 Go 竞态？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#defer-%E5%8F%AF%E4%BB%A5%E6%8D%95%E8%8E%B7-goroutine-%E7%9A%84%E5%AD%90-goroutine-%E5%90%97%EF%BC%9F"><span class="toc-number">30.</span> <span class="toc-text">defer 可以捕获 goroutine 的子 goroutine 吗？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%A6%82%E6%9E%9C%E8%8B%A5%E5%B9%B2%E4%B8%AAgoroutine%EF%BC%8C%E6%9C%89%E4%B8%80%E4%B8%AApanic%E4%BC%9A%E6%80%8E%E4%B9%88%E5%81%9A%EF%BC%9F"><span class="toc-number">31.</span> <span class="toc-text">如果若干个goroutine，有一个panic会怎么做？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#gRPC-%E6%98%AF%E4%BB%80%E4%B9%88%EF%BC%9F"><span class="toc-number">32.</span> <span class="toc-text">gRPC 是什么？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Go-%E6%98%AF%E5%A6%82%E4%BD%95%E8%A7%A3%E6%9E%90-Tag-%E7%9A%84%EF%BC%9F"><span class="toc-number">33.</span> <span class="toc-text">Go 是如何解析 Tag 的？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Go-%E9%A1%B9%E7%9B%AE%E5%A6%82%E4%BD%95%E4%BC%98%E9%9B%85%E7%9A%84%E5%90%AF%E5%81%9C%EF%BC%9F"><span class="toc-number">34.</span> <span class="toc-text">Go 项目如何优雅的启停？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#channel-%E6%AD%BB%E9%94%81%E7%9A%84%E5%9C%BA%E6%99%AF"><span class="toc-number">35.</span> <span class="toc-text">channel 死锁的场景</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#atomic-%E5%BA%95%E5%B1%82%E6%98%AF%E6%80%8E%E4%B9%88%E5%AE%9E%E7%8E%B0%E7%9A%84%EF%BC%9F"><span class="toc-number">36.</span> <span class="toc-text">atomic 底层是怎么实现的？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Go-%E7%9A%84%E8%B0%83%E8%AF%95-x2F-%E5%88%86%E6%9E%90%E5%B7%A5%E5%85%B7%E7%94%A8%E8%BF%87%E5%93%AA%E4%BA%9B%EF%BC%9F"><span class="toc-number">37.</span> <span class="toc-text">Go 的调试&#x2F;分析工具用过哪些？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BF%9B%E7%A8%8B%E8%A2%AB-kill%EF%BC%8C%E5%A6%82%E4%BD%95%E4%BF%9D%E8%AF%81%E6%89%80%E6%9C%89-goroutine-%E9%A1%BA%E5%88%A9%E9%80%80%E5%87%BA%EF%BC%9F"><span class="toc-number">38.</span> <span class="toc-text">进程被 kill，如何保证所有 goroutine 顺利退出？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%AF%B4%E8%AF%B4-context-%E5%8C%85%E7%9A%84%E4%BD%9C%E7%94%A8%EF%BC%9F"><span class="toc-number">39.</span> <span class="toc-text">说说 context 包的作用？</span></a></li></ol>
+    </div>
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://bigboss2063.github.io/post/53c12c48.html"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://bigboss2063.github.io/post/53c12c48.html&text=Golang 基础知识"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://bigboss2063.github.io/post/53c12c48.html&title=Golang 基础知识"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://bigboss2063.github.io/post/53c12c48.html&is_video=false&description=Golang 基础知识"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=Golang 基础知识&body=Check out this article: https://bigboss2063.github.io/post/53c12c48.html"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://bigboss2063.github.io/post/53c12c48.html&title=Golang 基础知识"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://bigboss2063.github.io/post/53c12c48.html&title=Golang 基础知识"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://bigboss2063.github.io/post/53c12c48.html&title=Golang 基础知识"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://bigboss2063.github.io/post/53c12c48.html&title=Golang 基础知识"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://bigboss2063.github.io/post/53c12c48.html&name=Golang 基础知识&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://bigboss2063.github.io/post/53c12c48.html&t=Golang 基础知识"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> Menu</a>
+        <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> TOC</a>
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> Share</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> Top</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2023
+    bigboss2063
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a href="/categories/">categories</a></li><!--
+     --><!--
+       --><li><a href="/tags/">tags</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/search/">Search</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"Copy to clipboard!\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "Copied!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+    <script type="text/javascript">
+      var utterances_repo = 'bigboss2063/blog-comments';
+      var utterances_issue_term = 'title';
+      var utterances_label = 'Comment';
+      var utterances_theme = 'github-dark';
+
+      (function(){
+          var script = document.createElement('script');
+
+          script.src = 'https://utteranc.es/client.js';
+          script.setAttribute('repo', utterances_repo);
+          script.setAttribute('issue-term', 'pathname');
+          script.setAttribute('label', utterances_label);
+          script.setAttribute('theme', utterances_theme);
+          script.setAttribute('crossorigin', 'anonymous');
+          script.async = true;
+          (document.getElementById('utterances_thread')).appendChild(script);
+      }());
+  </script>
+
+</body>
+</html>
