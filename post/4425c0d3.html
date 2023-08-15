@@ -14,7 +14,7 @@
 <meta property="og:description" content="所谓的 GC 就是回收掉不再需要使用的内存块，在 Java、Go 这样的带自动回收的语言中，会自动清理掉这样的垃圾内存，而在不支持垃圾回收的语言如 C++ 中，如果没有手动释放掉内存，那么这些内存就是内存泄漏。 Golang 使用的垃圾回收算法Golang 用到的垃圾回收算法是标记清扫算法，用三色抽象可以清晰的展现追踪过程中数据标记的变化：  垃圾回收开始的时候将所有对象都标记为白色； 把直接追踪">
 <meta property="og:locale" content="en_US">
 <meta property="article:published_time" content="2023-08-14T10:51:04.000Z">
-<meta property="article:modified_time" content="2023-08-14T10:52:02.109Z">
+<meta property="article:modified_time" content="2023-08-14T11:38:34.164Z">
 <meta property="article:author" content="bigboss2063">
 <meta property="article:tag" content="Golang">
 <meta property="article:tag" content="底层原理">
@@ -86,6 +86,8 @@
     <br/>
     <span id="actions">
       <ul>
+        
+        <li><a class="icon" aria-label="Previous post" href="/post/a34ceac6.html"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
         
         
         <li><a class="icon" aria-label="Next post" href="/post/80a40d2a.html"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
@@ -170,11 +172,12 @@
 <ol>
 <li>垃圾回收开始的时候将所有对象都标记为白色；</li>
 <li>把直接追踪到的根节点标记为灰色，灰色就表示基于当前节点展开的追踪还未完成；</li>
-<li>遍历根节点所有的子节点，并将子节点标记为黑色，当该根节点的子节点都遍历完成之后，将根节点标记为黑色；</li>
+<li>遍历根节点所有的子节点，并将子节点标记为灰色，当该根节点的子节点都遍历完成之后，将根节点标记为黑色；</li>
 <li>继续将灰色节点的子节点拿出来进行标记，直到没有灰色节点了，那么剩下的白色节点都是垃圾。</li>
 </ol>
 <p>有点类似于层序遍历的过程。</p>
 <p>在 Golang 中，着色为灰色意味着将 mspan 结构体中的 gcmarkBits 位图中对应的位设置为 1，并加入全局变量 work 中的工作队列；着色为黑色意味着将 gcmarkBits 对应的位设置为 1；而着色为白色则意味着 gcmarkBits 对应的位为 0。</p>
+<p>在扫描时堆上写入的对象会直接被置为黑色。</p>
 <h2 id="Golang-GC-的三种模式"><a href="#Golang-GC-的三种模式" class="headerlink" title="Golang GC 的三种模式"></a>Golang GC 的三种模式</h2><ol>
 <li>gcBackgroundMode，默认模式，标清清扫都是并发执行（<strong>用户程序与垃圾回收程序并发执行</strong>）的；</li>
 <li>gcForceMode，只在清扫阶段并发；</li>
@@ -193,7 +196,7 @@
 <li>进入清扫阶段：在清扫阶段 sweeper 协程会被放到工作队列中等待调度，等到它被调度时就进行清扫工作，而且申请内存的协程也会进行辅助清扫。</li>
 </ol>
 <h2 id="什么是写屏障？"><a href="#什么是写屏障？" class="headerlink" title="什么是写屏障？"></a>什么是写屏障？</h2><p>写屏障指的是会在写操作中插入指令，来通知垃圾回收器对象被修改了，并且要把修改记录到记录集中。</p>
-<p>如果有了写屏障，那么在 GC 扫描过程中就可以不用担心 GC 在扫描的过程中内存变化，比如清扫掉了正在使用的内存。是一种优化 GC 的手段。</p>
+<p>如果有了写屏障，那么就可以不用担心 GC 在扫描的过程中的内存变化，比如清扫掉了正在使用的内存，以为如果一个白色对象又有其它对象引用的话，垃圾回收器是可以知道的。是一种优化 GC 的手段。</p>
 <h3 id="插入写屏障"><a href="#插入写屏障" class="headerlink" title="插入写屏障"></a>插入写屏障</h3><p>插入写屏障指的是给黑色对象增加引用时触发写屏障，比方说给黑色对象 A 增加到白色对象 C 的引用时，会将 C 着色为灰色，或者将 A 退回灰色。</p>
 <h3 id="删除写屏障"><a href="#删除写屏障" class="headerlink" title="删除写屏障"></a>删除写屏障</h3><p>白色对象 C 是一个被黑色对象 A 引用的对象，删除灰色对象 B 到白色对象 C 的引用时，会把白色对象 C 着色为灰色。这样可以防止 C 被回收。</p>
 <h3 id="混合写屏障"><a href="#混合写屏障" class="headerlink" title="混合写屏障"></a>混合写屏障</h3><p>混合写屏障就是 Golang 采用的方式，结合了插入写屏障和删除写屏障来最大化减小 STW 的时间。</p>
