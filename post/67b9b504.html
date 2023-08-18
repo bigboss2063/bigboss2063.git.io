@@ -14,7 +14,7 @@
 <meta property="og:description" content="什么是 GMPGMP 是 goroutine 调度器的调度模型。  G：goroutine 协程； M：thread 线程； P：processor 处理器&#x2F;调度器。  M 是运行 G 的实体，P 的功能是把可运行的 G 分配到 M 上。 在 GMP 模型中，G 被放在队列中等待被调度，而队列又分为两种：全局队列和本地队列，正是因为本地队列的加入才有了 GMP 模型，否则只是 GM 模型">
 <meta property="og:locale" content="en_US">
 <meta property="article:published_time" content="2023-08-18T09:10:50.000Z">
-<meta property="article:modified_time" content="2023-08-18T09:32:06.175Z">
+<meta property="article:modified_time" content="2023-08-18T09:35:33.745Z">
 <meta property="article:author" content="bigboss2063">
 <meta property="article:tag" content="Golang">
 <meta property="article:tag" content="底层原理">
@@ -219,7 +219,7 @@
 </ol>
 </li>
 </ul>
-<h2 id="G-状态的转换"><a href="#G-状态的转换" class="headerlink" title="G 状态的转换"></a>G 状态的转换</h2><p>![G 状态转变图](..&#x2F;..&#x2F;public&#x2F;images&#x2F;G 状态转变图.png)</p>
+<h2 id="G-状态的转换"><a href="#G-状态的转换" class="headerlink" title="G 状态的转换"></a>G 状态的转换</h2><p>![G 状态转变图](..&#x2F;images&#x2F;G 状态转变图.png)</p>
 
   </div>
 </article>
